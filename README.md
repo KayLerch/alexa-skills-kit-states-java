@@ -1,12 +1,13 @@
-#Alexa Skills Kit extensions for state management
+#Alexa Skills Kit extensions SDK for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
 gives you really convenient alternative of __persisting session state in a growing
 number of persistence stores__ like DyanmoDB or AWS S3. It is an abstraction layer
 for reading state from and (permanently) saving state to either an Alexa session
-or one of the aforementioned data stores.
+or one of the aforementioned data stores. This also is your __framework for
+building your own state handlers__ for any possible data store.
 
 It can __save you hundreds of lines of code__. See following examples where
-you can see how to load / create state of a prepared POJO model, updating
+you can see how to load / create state of your prepared POJO model, updating
 some value and persist the update.
 
 ### Managing Alexa session state in _Alexa Session_
@@ -68,14 +69,16 @@ if annotating the whole model as _AlexaStateSave_
 public class QuizGame extends AlexaStateModel {
     private Integer highscore;
     @AlexaStateIgnore
-    private String currentUserScore;
+    private Integer level;
     // ...
 }
 ```
 Wow, there is the third scope _APPLICATION_ you can use in order to let
 state of your objects be valid throughout all users in all sessions. The
 _highscore_ value will be shared amongst all users of your skill whereas
-the _currentUserScore_ is ignored and will not persist in your session.
+the _level_ is ignored and will not persist in your session.
+
+![Scopes in Alexa Skills Kit extensions for state management](/img/alexa-scopes.png)
 
 ## 2) Choose your _AlexaStateHandler_
 Depending on where you want to save your model's states you can pick from
