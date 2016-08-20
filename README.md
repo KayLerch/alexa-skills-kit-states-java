@@ -1,4 +1,4 @@
-##Alexa Skills Kit extensions for state management
+#Alexa Skills Kit extensions for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
 gives you really convenient alternative of __persisting session state in a growing
 number of persistence stores__ like DyanmoDB or AWS S3. It is an abstraction layer
@@ -9,7 +9,7 @@ It can __save you hundreds of lines of code__. See following examples where
 you can see how to load / create state of a prepared POJO model, updating
 some value and persist the update.
 
-##### Managing Alexa session state in _Alexa Session_
+### Managing Alexa session state in _Alexa Session_
 State is persisted throughout one client session.
 ```java
 AlexaStateHandler handler = new AlexaSessionStateHandler(session);
@@ -17,7 +17,7 @@ User abby = handler.readModel(User.class, "Abby").orElse(handler.createModel(Use
 abby.addAchievement("Rookie");
 abby.saveState();
 ```
-##### Managing Alexa session state in _AWS DynamoDB table_
+### Managing Alexa session state in _AWS DynamoDB table_
 State is persisted permanently per user.
 ```java
 AlexaStateHandler handler = new AwsDynamoStateHandler(session);
@@ -25,7 +25,7 @@ User john = handler.readModel(User.class, "John").orElse(handler.createModel(Use
 john.setAge(30);
 john.saveState();
 ```
-##### Managing Alexa session state in _AWS S3 bucket_
+### Managing Alexa session state in _AWS S3 bucket_
 If you like to administer state objects in files why not using an S3 bucket?
 ```java
 AlexaStateHandler handler = new AwsS3StateHandler(session, "bucketName");
@@ -43,7 +43,7 @@ user but also per application__ for e.g. managing the highscore of your little g
 Now you will learn how to pimp your Alexa Skill with permanent state capability
 in minutes.
 
-#### 1) Prepare your POJO model class
+## 1) Prepare your POJO model class
 Stop writing single values to a session or table and __start organizing your state
 in objects__. The above sample had the User-object. Think of it as a POJO with some
 members and corresponding getters and setters.
@@ -77,7 +77,7 @@ state of your objects be valid throughout all users in all sessions. The
 _highscore_ value will be shared amongst all users of your skill whereas
 the _currentUserScore_ is ignored and will not persist in your session.
 
-#### 2) Choose your _AlexaStateHandler_
+## 2) Choose your _AlexaStateHandler_
 Depending on where you want to save your model's states you can pick from
 one of the following handlers:
 
@@ -109,7 +109,7 @@ AlexaStateHandler dyh1 = new AwsDynamoStateHandler(session);
 AlexaStateHandler dyh2 = new AwsDynamoStateHandler(session, "tableName");
 AlexaStateHandler dyh3 = new AwsDynamoStateHandler(session, new AmazonDynamoDBClient(), "tableName");
 ```
-#### 3) Create an instance of your model
+## 3) Create an instance of your model
 So you got your POJO model and also your preferred state handler. They now need
 to get introduced to each other. The most convenient way is to instantiate
 your model with help of the state handler. Of course you can construct your model
@@ -125,7 +125,8 @@ The second line does not provide an Id causing this model to be a scope-wide
 singleton. What in this case makes total sense as the _QuizGame_ is scoped
 as _APPLICATION_ and is shared with all users of your skill. Moreover, the
 second approach won't let you deal with identifiers.
-#### 4) Save state of your model
+
+## 4) Save state of your model
 Continuing from above lines we now assign some values to _bob_ and set a
 new highscore in the _game_. But nothing will be persisted until you tell
 your model to save its state. There are two alternatives of doing so:
@@ -148,7 +149,7 @@ bob.saveState();
 bob.setHandler(dynamoHandler);
 game.saveState();
 ```
-#### 5) Read state of your model from memory
+## 5) Read state of your model from memory
 So real Bob is leaving his Echo for a week. After some days he's asking
 your skill again what's his age. As your skill is pimped with the State SDK
 it just needs to read out _bob_ over the same handler it was saved.
@@ -180,7 +181,7 @@ new AlexaSessionStateHandler(session).writeModel(bob);
 Next time you read out _bob_ with _AlexaSessionStateHandler_ and not with
 the handler of DynamoDB or S3.
 
-#### 6) Remove state of your model
+## 6) Remove state of your model
 Of course you can delete state of your model. Let's keep it short as I
 think you already got it.
 ```java
@@ -191,7 +192,7 @@ handler.removeModel(bob);
 // or if we haven't read out bob so far
 handler.readModel(User.class, "Bob").ifPresent(bob -> bob.removeState());
 ```
-#### See how it works
+## See how it works
 Putting it together, there's a lot you can do with these extensions in
 regards to state mangement in your Alexa skill.
 Get detailled information of this SDKs in the extended [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/index.html).
@@ -208,4 +209,5 @@ bob.saveState();
 ```
 with nothing you to bring except for some credentials to your AWS account
 gets you to
+
 ![Bob's state in DynamoDB table](/img/bob-in-dynamo.png)
