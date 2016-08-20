@@ -17,8 +17,8 @@ import me.lerch.alexa.state.utils.AlexaStateErrorException;
 import java.util.*;
 
 /**
- * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  * As this handler works in the user and application scope it persists all models to a AWS DynamoDB table.
+ * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  * This handler derives from the AlexaSessionStateHandler thus it reads and writes state out of DynamoDB also to your Alexa
  * session.
  */

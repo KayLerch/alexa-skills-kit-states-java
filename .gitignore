@@ -10,4 +10,4 @@ buildNumber.properties
 
 .idea
 *.iml
-/src/main/java/me/lerch/alexa/state/console/*
+/src/test/java/console/*

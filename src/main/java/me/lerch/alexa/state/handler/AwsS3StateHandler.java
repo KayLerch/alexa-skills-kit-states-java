@@ -25,8 +25,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  * As this handler works in the user and application scope it persists all models to an S3 bucket.
+ * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  * This handler derives from the AlexaSessionStateHandler thus it reads and writes state out of S3 files also to your Alexa
  * session. For each individual scope (which is described by the Alexa User Id there will be a directory in your bucket which
  * then contains files - one for each instance of a saved model.

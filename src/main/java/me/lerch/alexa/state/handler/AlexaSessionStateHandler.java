@@ -17,8 +17,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  * As this handler works in the session scope it persists all models to the attributes of an associate Alexa Session object.
+ * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  */
 public class AlexaSessionStateHandler implements AlexaStateHandler {
     final Session session;

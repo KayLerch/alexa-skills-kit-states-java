@@ -76,7 +76,8 @@ public abstract class AlexaStateModel {
 
     /**
      * Asks the state handler associated with this model to save all AlexaStateSave-tagged fields in the persistence store.
-     * This method will raise an exception if no handler is set for this model. {@see setHandler}
+     * This method will raise an exception if no handler is set for this model.
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      */
     public void saveState() throws AlexaStateErrorException {
         Validate.notNull(this.__handler, "Save state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
@@ -86,7 +87,8 @@ public abstract class AlexaStateModel {
     /**
      * Asks the state handler associated with this model to load values out of the persistence store into all AlexaStateSave-tagged fields of this model.
      * It will overwrite the current values of those fields.
-     * This method will raise an exception if no handler is set for this model. {@see setHandler}
+     * This method will raise an exception if no handler is set for this model.
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      */
     public void loadState() throws AlexaStateErrorException {
         Validate.notNull(this.__handler, "Refreshing state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
@@ -96,6 +98,7 @@ public abstract class AlexaStateModel {
     /**
      * Asks the state handler associated with this model to remove the model from the persistence store. It means you won't be
      * able to access the model with its id anymore. There is no impact on the runtime instance. Its values remain.
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      */
     public void removeState() throws AlexaStateErrorException {
         Validate.notNull(this.__handler, "Remove state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
@@ -117,6 +120,7 @@ public abstract class AlexaStateModel {
      * getter following the naming convention getFieldname() in order to return its value. If there's a problem
      * with accessing the value this method returns null.
      * @param field The field whose value you desire. It must be publically accessible at least through a getter-method and of course must be owned by the model class.
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return Value of the given field.
      */
     public Object get(Field field) throws AlexaStateErrorException {
@@ -139,6 +143,7 @@ public abstract class AlexaStateModel {
      * with accessing the value this method returns false
      * @param field The field whose value you want to set. It must be publically accessible at least through a setter-method and of course must be owned by the model class.
      * @param value New value for the given field
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if value was set successfully.
      */
     public Boolean set(Field field, Object value) throws AlexaStateErrorException {
@@ -167,6 +172,7 @@ public abstract class AlexaStateModel {
      * will result in its value being written to the field of this model. Those fields needs to have the AlexaStateSave-annotation
      * otherwise they will not be considered even though there name match with a key in the given json.
      * @param json A json with key-value-pairs where the keys likely equal some of the AlexaStateSave-tagged fields in this model.
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields.
      */
     public boolean fromJSON(String json) throws AlexaStateErrorException {
@@ -181,6 +187,7 @@ public abstract class AlexaStateModel {
      * with the given scope otherwise they will not be considered even though there name match with a key in the given json.
      * @param json A json with key-value-pairs where the keys likely equal some of the AlexaStateSave-tagged with given scope fields in this model.
      * @param scope The scope a AlexaStateSave-annotated field must have to be considered for value assignment
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields with given scope.
      */
     public boolean fromJSON(String json, AlexaScope scope) throws AlexaStateErrorException {
@@ -201,6 +208,7 @@ public abstract class AlexaStateModel {
      * Returns a json with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      * in the given scope
      * @param scope The scope a AlexaStateSave-annotated field must have or be part of to be considered in the returned json
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return A json-string with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
     public String toJSON(AlexaScope scope) throws AlexaStateErrorException {
@@ -225,6 +233,7 @@ public abstract class AlexaStateModel {
      * Returns a map with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      * in the given scope
      * @param scope The scope a AlexaStateSave-annotated field must have or be part of to be considered in the returned map
+     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
      * @return A map with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
     public Map<String, Object> toMap(AlexaScope scope) throws AlexaStateErrorException {
