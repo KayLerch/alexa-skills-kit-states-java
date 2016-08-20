@@ -39,6 +39,17 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
     private final String fileExtension = "json";
 
     /**
+     * Takes the Alexa session. An AWS client for accessing the S3 bucket will make use
+     * of all the defaults in your runtime environment in regards to AWS region and credentials. The
+     * credentials of this client need permission for getting and putting objects to this bucket.
+     * @param session The Alexa session of your current skill invocation.
+     * @param bucketName The bucket where all saved states will go into.
+     */
+    public AwsS3StateHandler(final Session session, final String bucketName) {
+        this(session, new AmazonS3Client(), bucketName);
+    }
+
+    /**
      * Takes the Alexa session and an AWS client set up for the AWS region the given bucket is in. The
      * credentials of this client need permission for getting and putting objects to this bucket.
      * @param session The Alexa session of your current skill invocation.

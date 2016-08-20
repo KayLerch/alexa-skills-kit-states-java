@@ -36,7 +36,21 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
     private Boolean tableExistenceApproved = false;
 
     /**
-     * The most convenient constructor just takes the Alexa session and a AWS client which is set up for
+     * The most convenient constructor just takes the Alexa session. An AWS client for accessing DynamoDB
+     * will make use of all defaults in regards to credentials and region. The credentials used in this client need permission for reading, writing and
+     * removing items from a DynamoDB table and also the right to create a table. On the very first read or
+     * write operation of this handler it creates a table named like your Alexa App Id.
+     * The table created consist of a hash-key and a sort-key.
+     * If you don't want this handler to auto-create a table provide the name of an existing table in DynamoDB
+     * in another constructor.
+     * @param session The Alexa session of your current skill invocation.
+     */
+    public AwsDynamoStateHandler(final Session session) {
+        this(session, new AmazonDynamoDBClient(), null, 10L, 5L);
+    }
+
+    /**
+     * Takes the Alexa session and a AWS client which is set up for
      * the correct AWS region. The credentials used in this client need permission for reading, writing and
      * removing items from a DynamoDB table and also the right to create a table. On the very first read or
      * write operation of this handler it creates a table named like your Alexa App Id.
@@ -48,6 +62,20 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      */
     public AwsDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient) {
         this(session, awsClient, null, 10L, 5L);
+    }
+
+    /**
+     * Takes the Alexa session and a table. An AWS client for accessing DynamoDB
+     * will make use of all defaults in regards to credentials and region. The credentials used in this client need permission for reading, writing and
+     * removing items from the given DynamoDB table. The table needs a string hash-key with name model-class and a string sort-key
+     * of name amzn-user-id. The option of providing an existing table to this handler prevents it from checking its existence
+     * which might end up with a better performance. You also don't need to provide permission of creating a DynamoDB table to
+     * the credentials of the given AWS client.
+     * @param session The Alexa session of your current skill invocation.
+     * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
+     */
+    public AwsDynamoStateHandler(final Session session, final String tableName) {
+        this(session, new AmazonDynamoDBClient(), tableName, 10L, 5L);
     }
 
     /**
