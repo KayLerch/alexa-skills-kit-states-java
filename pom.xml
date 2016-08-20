@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>me.lerch</groupId>
-    <artifactId>alexa-skills-kit-4states-java</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>alexa-skills-kit-states-java</artifactId>
+    <version>0.1.0</version>
 
     <dependencies>
         <dependency>
