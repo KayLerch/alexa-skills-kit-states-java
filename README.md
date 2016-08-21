@@ -3,7 +3,7 @@ __Current state__: Collecting feedback, do serious testing
 #Alexa Skills Kit extensions SDK for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
 gives you a really convenient alternative of __persisting session state in a growing
-number of persistence stores__ like DynamoDB or AWS S3. It is an abstraction layer
+number of persistence stores__ like DynamoDB, AWS S3 and AWS IoT. It is an abstraction layer
 for reading state from and (permanently) saving state to either an Alexa session
 or one of the aforementioned data stores. This also is your __framework for
 building your own state handlers__ for any possible data store.
@@ -39,7 +39,7 @@ bob.saveState();
 
 ### Propagate Alexa session state to a _AWS IoT thing shadow_
 You can not only use handlers to persist states but also to propagate it.
-By propagating state to an AWS IoT thing shadow you interact with things easily
+By propagating state to an AWS IoT thing shadow you interact with physical things easily
 ```java
 AlexaStateHandler handler = new AWSIoTStateHandler(session);
 User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
