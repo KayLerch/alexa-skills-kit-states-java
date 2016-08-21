@@ -23,7 +23,7 @@ abby.saveState();
 ### Managing Alexa session state in a _AWS DynamoDB table_
 State is persisted permanently per user.
 ```java
-AlexaStateHandler handler = new AwsDynamoStateHandler(session);
+AlexaStateHandler handler = new AWSDynamoStateHandler(session);
 User john = handler.readModel(User.class, "John").orElse(handler.createModel(User.class, "John"));
 john.setPersonalHighscore(90);
 john.saveState();
@@ -31,11 +31,25 @@ john.saveState();
 ### Managing Alexa session state in a _AWS S3 bucket_
 If you like to administer state objects in files why not using an S3 bucket?
 ```java
-AlexaStateHandler handler = new AwsS3StateHandler(session, "bucketName");
+AlexaStateHandler handler = new AWSS3StateHandler(session, "bucketName");
 User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
 bob.setPersonalHighscore(100);
 bob.saveState();
 ```
+
+### Propagate Alexa session state to a _AWS IoT thing shadow_
+You can not only use handlers to persist states but also to propagate it.
+By propagating state to an AWS IoT thing shadow you interact with things easily
+```java
+AlexaStateHandler handler = new AWSIoTStateHandler(session);
+User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
+bob.setPersonalHighscore(100);
+bob.saveState();
+```
+Imagine having an LED display connected with AWS IoT - specifically to an MQTT topic
+publishing messages on thing shadow updates - so you can display the
+highscore in public places.
+
 It is easy to __implement your own AlexaStateHandler__ so you can save
 state in whatever you want to use.
 
@@ -97,27 +111,37 @@ and is not capable of saving state in _USER_- or _APPLICATION_-scope.
 AlexaStateHandler sh1 = new AlexaSessionStateHandler(session);
 ```
 
-The __AwsS3StateHandler__ persists state in files in an AWS S3 bucket. It can be
+The __AWSS3StateHandler__ persists state in files in an AWS S3 bucket. It can be
 constructed in different ways. All you have to provide is an S3 bucket. You maybe want to hand in an AWS client from
 the AWS SDK in order to have set up your own credentials and AWS region. As
 the handler also gets the Alexa session object, whatever is read from or written to S3
 will be in your Alexa session as well. So you won't need to read out your
 model state over and over again within one session.
 ```java
-AlexaStateHandler s3h1 = new AwsS3StateHandler(session, "bucketName");
-AlexaStateHandler s3h2 = new AwsS3StateHandler(session, new AmazonS3Client().withRegion(Regions.US_EAST_1), "bucketName");
+AlexaStateHandler s3h1 = new AWSS3StateHandler(session, "bucketName");
+AlexaStateHandler s3h2 = new AWSS3StateHandler(session, new AmazonS3Client().withRegion(Regions.US_EAST_1), "bucketName");
 ```
 
-The __AwsDynamoStateHandler__ persists state in items in a DynamoDB table. If
+The __AWSDynamoStateHandler__ persists state in items in a DynamoDB table. If
 you don't give it a table to work with, the handler creates one for you. Once
 more you could hand in an AWS client with custom configuration. As
 the handler gets the Alexa session object, whatever is read from or written to the table
 will be in your Alexa session as well. So you won't need to read out your
 model state over and over again within one session.
 ```java
-AlexaStateHandler dyh1 = new AwsDynamoStateHandler(session);
-AlexaStateHandler dyh2 = new AwsDynamoStateHandler(session, "tableName");
-AlexaStateHandler dyh3 = new AwsDynamoStateHandler(session, new AmazonDynamoDBClient(), "tableName");
+AlexaStateHandler dyh1 = new AWSDynamoStateHandler(session);
+AlexaStateHandler dyh2 = new AWSDynamoStateHandler(session, "tableName");
+AlexaStateHandler dyh3 = new AWSDynamoStateHandler(session, new AmazonDynamoDBClient(), "tableName");
+```
+
+The __AWSIoTStateHandler__ persists state in a virtual representation of a
+physical thing - in AWS IoT this is called a thing shadow. AWS IoT manages state
+of that thing and automatically propagates state updates to the connected thing.
+It also receives state updates from the thing which will persist in the shadow as well.
+This handler can also read out that updated data and serialize it in your model.
+```java
+AlexaStateHandler ioth1 = new AWSIoTStateHandler(session);
+AlexaStateHandler ioth1 = new AWSIoTStateHandler(session, new AWSIotClient(), new AWSIotDataClient());
 ```
 ## 3) Create an instance of your model
 So you got your POJO model and also your preferred state handler. They now need
@@ -157,7 +181,7 @@ any time. Let's say you want to save _bob_'s state in S3 and in DynamoDB.
 bob.setHandler(s3Handler);
 bob.saveState();
 bob.setHandler(dynamoHandler);
-game.saveState();
+bob.saveState();
 ```
 ## 5) Read state of your model from memory
 So real Bob is leaving his Echo for a week. After some days he's asking
@@ -205,7 +229,7 @@ handler.readModel(User.class, "Bob").ifPresent(bob -> bob.removeState());
 ## See how it works
 Putting it together, there's a lot you can do with these extensions in
 regards to state mangement in your Alexa skill.
-Get detailled information of this SDKs in the extended [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/index.html).
+Get detailled information of this SDKs in the [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/index.html).
 
 One last example. Running _userScored("Bob", 100)_
 ```java

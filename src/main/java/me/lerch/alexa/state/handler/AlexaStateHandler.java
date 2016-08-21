@@ -7,7 +7,7 @@
 package me.lerch.alexa.state.handler;
 
 import me.lerch.alexa.state.model.AlexaStateModel;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 
 import java.util.Optional;
 
@@ -51,17 +51,17 @@ public interface AlexaStateHandler {
      * The given model will be saved in the persistence store according to its {@link me.lerch.alexa.state.model.AlexaStateSave}-annotations.
      * If you set up an Id for the model it will be accessible with it on later on reads to the handler.
      * @param model Your model which needs to be a type of {@link AlexaStateModel}
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    void writeModel(final AlexaStateModel model) throws AlexaStateErrorException;
+    void writeModel(final AlexaStateModel model) throws AlexaStateException;
 
     /**
      * The given model will be removed from the persistence store. If it's not existing in the store nothing happens.
      * Be aware of the Id set in the model as the removal will only affect the model with this id.
      * @param model Your model which needs to be a type of {@link AlexaStateModel}
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    void removeModel(final AlexaStateModel model) throws AlexaStateErrorException;
+    void removeModel(final AlexaStateModel model) throws AlexaStateException;
 
     /**
      * Reads out the model from the persistence store of this handler. Depending on the {@link me.lerch.alexa.state.model.AlexaScope AlexaScope}s configured in
@@ -70,10 +70,10 @@ public interface AlexaStateHandler {
      * You are not providing an id with this call. Thus it will look for the single representative without an id.
      * @param modelClass Type of the model you would like to read out. It needs to be of type {@link AlexaStateModel}.
      * @param <TModel> Type derived from {@link AlexaStateModel}
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return A model matching the given type and augmented with all the attributes found in the persistence store.
      */
-    <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateErrorException;
+    <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException;
 
     /**
      * Reads out the model from the persistence store of this handler. Depending on the {@link me.lerch.alexa.state.model.AlexaScope AlexaScope}s configured in
@@ -83,8 +83,8 @@ public interface AlexaStateHandler {
      * @param modelClass Type of the model you would like to read out. It needs to be of type {@link AlexaStateModel}.
      * @param id The id of an existing instance of your model in the persistence store.
      * @param <TModel> Type derived from {@link AlexaStateModel}
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return A model matching the given type and id. Augmented with all the attributes found in the persistence store.
      */
-    <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateErrorException;
+    <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException;
 }

@@ -12,7 +12,7 @@ import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import me.lerch.alexa.state.model.AlexaStateModel;
 import me.lerch.alexa.state.model.AlexaScope;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 
 import java.util.*;
 
@@ -22,7 +22,7 @@ import java.util.*;
  * This handler derives from the AlexaSessionStateHandler thus it reads and writes state out of DynamoDB also to your Alexa
  * session.
  */
-public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
+public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
 
     private final AmazonDynamoDBClient awsClient;
     private final String tableName;
@@ -45,7 +45,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * in another constructor.
      * @param session The Alexa session of your current skill invocation.
      */
-    public AwsDynamoStateHandler(final Session session) {
+    public AWSDynamoStateHandler(final Session session) {
         this(session, new AmazonDynamoDBClient(), null, 10L, 5L);
     }
 
@@ -60,7 +60,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * @param session The Alexa session of your current skill invocation.
      * @param awsClient An AWS client capable of creating DynamoDB table plus reading, writing and removing items.
      */
-    public AwsDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient) {
         this(session, awsClient, null, 10L, 5L);
     }
 
@@ -74,7 +74,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * @param session The Alexa session of your current skill invocation.
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
-    public AwsDynamoStateHandler(final Session session, final String tableName) {
+    public AWSDynamoStateHandler(final Session session, final String tableName) {
         this(session, new AmazonDynamoDBClient(), tableName, 10L, 5L);
     }
 
@@ -89,7 +89,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * @param awsClient An AWS client capable of reading, writing and removing items of the given DynamoDB table.
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
-    public AwsDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName) {
         this(session, awsClient, tableName, 10L, 5L);
     }
 
@@ -106,11 +106,11 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * @param readCapacityUnits Read capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      * @param writeCapacityUnits Write capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      */
-    public AwsDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final long readCapacityUnits, final long writeCapacityUnits) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final long readCapacityUnits, final long writeCapacityUnits) {
         this(session, awsClient, null, readCapacityUnits, writeCapacityUnits);
     }
 
-    private AwsDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName, final long readCapacityUnits, final long writeCapacityUnits) {
+    private AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName, final long readCapacityUnits, final long writeCapacityUnits) {
         super(session);
         this.awsClient = awsClient;
         // assume table exists if table name provided.
@@ -124,7 +124,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(final AlexaStateModel model) throws AlexaStateErrorException {
+    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
         // write to session
         super.writeModel(model);
         boolean hasAppScopedFields = model.getSaveStateFields(AlexaScope.APPLICATION).stream().findAny().isPresent();
@@ -135,7 +135,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
             try {
                 ensureTableExists();
             } catch (InterruptedException e) {
-                throw AlexaStateErrorException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
+                throw AlexaStateException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
             }
         }
 
@@ -163,7 +163,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
+    public void removeModel(AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         // removeState user-scoped item
         awsClient.deleteItem(tableName, getUserScopedKeyAttributes(model.getClass(), model.getId()));
@@ -175,7 +175,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
         return this.readModel(modelClass, null);
     }
 
@@ -183,7 +183,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // querying dynamodb in the following lines. only if this is true model will be written back to session
@@ -197,7 +197,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
             try {
                 ensureTableExists();
             } catch (InterruptedException e) {
-                throw AlexaStateErrorException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
+                throw AlexaStateException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
             }
         }
         // we need to remember if there will be something from dynamodb to be written to the model
@@ -226,7 +226,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    private boolean fromDbStatetoModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateErrorException {
+    private boolean fromDbStatetoModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateException {
         // do only read from db if model has fields tagged with given scope
         if (!alexaStateModel.getSaveStateFields(scope).isEmpty()) {
             // read from item with scoped model

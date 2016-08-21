@@ -10,7 +10,6 @@ import com.amazon.speech.speechlet.Session;
 import com.amazonaws.services.iot.AWSIotClient;
 import com.amazonaws.services.iot.model.*;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
-import com.amazonaws.services.iotdata.model.DeleteThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowRequest;
@@ -19,7 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import me.lerch.alexa.state.model.AlexaScope;
 import me.lerch.alexa.state.model.AlexaStateModel;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 import me.lerch.alexa.state.utils.EncryptUtils;
 
 import java.io.IOException;
@@ -28,7 +27,7 @@ import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 
-public class AwsIOTStateHandler extends AlexaSessionStateHandler {
+public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
     private final AWSIotClient awsClient;
     private final AWSIotDataClient awsDataClient;
@@ -37,11 +36,11 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
     private final String thingAttributeApp = "amzn-app-id";
     private boolean thingExistsApproved = false;
 
-    public AwsIOTStateHandler(final Session session) {
+    public AWSIotStateHandler(final Session session) {
         this(session, new AWSIotClient(), new AWSIotDataClient());
     }
 
-    public AwsIOTStateHandler(final Session session, final AWSIotClient awsClient, final AWSIotDataClient awsDataClient) {
+    public AWSIotStateHandler(final Session session, final AWSIotClient awsClient, final AWSIotDataClient awsDataClient) {
         super(session);
         this.awsClient = awsClient;
         this.awsDataClient = awsDataClient;
@@ -51,7 +50,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(final AlexaStateModel model) throws AlexaStateErrorException {
+    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
         // write to session
         super.writeModel(model);
 
@@ -70,7 +69,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
         return this.readModel(modelClass, null);
     }
 
@@ -78,7 +77,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
+    public void removeModel(AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         // get all fields which are user-scoped
         final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
@@ -98,7 +97,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
@@ -133,7 +132,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateErrorException {
+    private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         final String nodeName = getAttributeKey(model);
         final String thingName = AlexaScope.USER.includes(scope) ? getUserScopedThingName() : getAppScopedThingName();
         final String thingState = getState(thingName, scope);
@@ -149,11 +148,11 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
             final String json = mapper.writeValueAsString(root);
             publishState(thingName, json);
         } catch (IOException e) {
-            throw AlexaStateErrorException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
+            throw AlexaStateException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
         }
     }
 
-    private boolean fromThingShadowToModel(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateErrorException {
+    private boolean fromThingShadowToModel(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         // read from item with scoped model
         final String thingName = AlexaScope.APPLICATION.includes(scope) ? getAppScopedThingName() : getUserScopedThingName();
         final String thingState = getState(thingName, scope);
@@ -166,19 +165,19 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
                 return model.fromJSON(json, scope);
             }
         } catch (IOException e) {
-            throw AlexaStateErrorException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
+            throw AlexaStateException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
         }
         return false;
     }
 
-    private String getUserScopedThingName() throws AlexaStateErrorException {
+    private String getUserScopedThingName() throws AlexaStateException {
         // user-ids in Alexa are too long for thing names in AWS IOT.
         // use the SHA1-hash of the user-id
         final String userHash;
         try {
             userHash = EncryptUtils.encryptSha1(session.getUser().getUserId());
         } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-            throw AlexaStateErrorException.create("Could not encrypt user-id for generating the IOT thing-name").withHandler(this).withCause(e).build();
+            throw AlexaStateException.create("Could not encrypt user-id for generating the IOT thing-name").withHandler(this).withCause(e).build();
         }
         return getAppScopedThingName() + "-" + userHash;
     }
@@ -188,7 +187,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
         return session.getApplication().getApplicationId().replace(".", "-");
     }
 
-    private String getState(final String thingName, final AlexaScope scope) throws AlexaStateErrorException {
+    private String getState(final String thingName, final AlexaScope scope) throws AlexaStateException {
         createThingOfNotExisting(thingName, scope);
 
         final GetThingShadowRequest awsRequest = new GetThingShadowRequest().withThingName(thingName);
@@ -199,7 +198,7 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
             try {
                 return (buffer != null && buffer.hasArray()) ? new String(buffer.array(), "UTF-8") : "{}";
             } catch (UnsupportedEncodingException e) {
-                throw AlexaStateErrorException.create("Could not handle received contents of thing-shaodw " + thingName).withCause(e).withHandler(this).build();
+                throw AlexaStateException.create("Could not handle received contents of thing-shaodw " + thingName).withCause(e).withHandler(this).build();
             }
         }
         // if a thing does not have a shadow this is a usual exception
@@ -210,18 +209,18 @@ public class AwsIOTStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    private void publishState(final String thingName, final AlexaStateModel model, final AlexaScope scope) throws AlexaStateErrorException {
+    private void publishState(final String thingName, final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         createThingOfNotExisting(thingName, scope);
         final String payload = "{\"state\":{\"desired\":{\"" + getAttributeKey(model) + "\":" + model.toJSON(scope) + "}}}";
         publishState(thingName, payload);
     }
 
-    private void publishState(final String thingName, final String json) throws AlexaStateErrorException {
+    private void publishState(final String thingName, final String json) throws AlexaStateException {
         final ByteBuffer buffer;
         try {
             buffer = ByteBuffer.wrap(json.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
-            throw AlexaStateErrorException.create(e.getMessage()).withCause(e).withHandler(this).build();
+            throw AlexaStateException.create(e.getMessage()).withCause(e).withHandler(this).build();
         }
         final UpdateThingShadowRequest iotRequest = new UpdateThingShadowRequest().withThingName(thingName).withPayload(buffer);
         awsDataClient.updateThingShadow(iotRequest);

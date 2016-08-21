@@ -9,12 +9,12 @@ package me.lerch.alexa.state.utils;
 import me.lerch.alexa.state.handler.AlexaStateHandler;
 import me.lerch.alexa.state.model.AlexaStateModel;
 
-public class AlexaStateErrorException extends Exception {
+public class AlexaStateException extends Exception {
     private static final long serialVersionUID = 466433664499611218L;
     private final AlexaStateModel model;
     private final AlexaStateHandler handler;
 
-    public AlexaStateErrorException(final AlexaStateErrorExceptionBuilder builder) {
+    public AlexaStateException(final AlexaStateErrorExceptionBuilder builder) {
         super(builder.errorMessage, builder.cause);
         this.model = builder.model;
         this.handler = builder.handler != null ? builder.handler : this.model != null ? model.getHandler() : null;
@@ -57,8 +57,8 @@ public class AlexaStateErrorException extends Exception {
             return this;
         }
 
-        public AlexaStateErrorException build() {
-            return new AlexaStateErrorException(this);
+        public AlexaStateException build() {
+            return new AlexaStateException(this);
         }
     }
 }

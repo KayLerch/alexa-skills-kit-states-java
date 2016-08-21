@@ -7,17 +7,14 @@
 package me.lerch.alexa.state.model.serializer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.cfg.ContextAttributes;
 import me.lerch.alexa.state.model.AlexaScope;
 import me.lerch.alexa.state.model.AlexaStateModel;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.Arrays;
 
 /**
  * This custom JSON serializer considers all fields tagged with the AlexaStateSave annotation in a given scope.
@@ -39,7 +36,7 @@ public abstract class AlexaStateSerializer extends JsonSerializer<AlexaStateMode
                 Object fieldValue;
                 try {
                     fieldValue = alexaStateModel.get(field);
-                } catch (AlexaStateErrorException e) {
+                } catch (AlexaStateException e) {
                     // wrap custom exception with expected IOException
                     throw new IOException("Could not get value of field " + fieldName, e);
                 }

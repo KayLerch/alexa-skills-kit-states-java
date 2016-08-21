@@ -14,7 +14,7 @@ import me.lerch.alexa.state.model.serializer.AlexaAppStateSerializer;
 import me.lerch.alexa.state.model.serializer.AlexaSessionStateSerializer;
 import me.lerch.alexa.state.model.serializer.AlexaStateSerializer;
 import me.lerch.alexa.state.model.serializer.AlexaUserStateSerializer;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 import me.lerch.alexa.state.utils.ConversionUtils;
 import me.lerch.alexa.state.utils.ReflectionUtils;
 import org.apache.commons.lang3.Validate;
@@ -79,9 +79,9 @@ public abstract class AlexaStateModel {
     /**
      * Asks the state handler associated with this model to save all AlexaStateSave-tagged fields in the persistence store.
      * This method will raise an exception if no handler is set for this model.
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    public void saveState() throws AlexaStateErrorException {
+    public void saveState() throws AlexaStateException {
         Validate.notNull(this.__handler, "Save state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
         this.__handler.writeModel(this);
     }
@@ -90,9 +90,9 @@ public abstract class AlexaStateModel {
      * Asks the state handler associated with this model to load values out of the persistence store into all AlexaStateSave-tagged fields of this model.
      * It will overwrite the current values of those fields.
      * This method will raise an exception if no handler is set for this model.
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    public void loadState() throws AlexaStateErrorException {
+    public void loadState() throws AlexaStateException {
         Validate.notNull(this.__handler, "Refreshing state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
         this.__handler.readModel(this.getClass(), this.getId());
     }
@@ -100,9 +100,9 @@ public abstract class AlexaStateModel {
     /**
      * Asks the state handler associated with this model to remove the model from the persistence store. It means you won't be
      * able to access the model with its id anymore. There is no impact on the runtime instance. Its values remain.
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    public void removeState() throws AlexaStateErrorException {
+    public void removeState() throws AlexaStateException {
         Validate.notNull(this.__handler, "Remove state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
         this.__handler.removeModel(this);
     }
@@ -122,10 +122,10 @@ public abstract class AlexaStateModel {
      * getter following the naming convention getFieldname() in order to return its value. If there's a problem
      * with accessing the value this method returns null.
      * @param field The field whose value you desire. It must be publically accessible at least through a getter-method and of course must be owned by the model class.
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return Value of the given field.
      */
-    public Object get(Field field) throws AlexaStateErrorException {
+    public Object get(Field field) throws AlexaStateException {
         final String fieldName = field.getName();
         // prefer getting value from getter over direct read from field
         try {
@@ -135,7 +135,7 @@ public abstract class AlexaStateModel {
             return getter != null ? getter.invoke(this) : field.get(this);
         }
         catch (IllegalAccessException | InvocationTargetException e) {
-            throw AlexaStateErrorException.create("Could not access field " + fieldName + " in model for reading. Ensure there's a public getter in the module.").withCause(e).withModel(this).build();
+            throw AlexaStateException.create("Could not access field " + fieldName + " in model for reading. Ensure there's a public getter in the module.").withCause(e).withModel(this).build();
         }
     }
 
@@ -145,10 +145,10 @@ public abstract class AlexaStateModel {
      * with accessing the value this method returns false
      * @param field The field whose value you want to set. It must be publically accessible at least through a setter-method and of course must be owned by the model class.
      * @param value New value for the given field
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if value was set successfully.
      */
-    public Boolean set(Field field, Object value) throws AlexaStateErrorException {
+    public Boolean set(Field field, Object value) throws AlexaStateException {
         final String fieldName = field.getName();
         // prefer setting value with setter over direct value assignment to field
         try {
@@ -165,7 +165,7 @@ public abstract class AlexaStateModel {
             }
         }
         catch (IllegalAccessException | InvocationTargetException e) {
-            throw AlexaStateErrorException.create("Could not access field " + fieldName + " in model for writing. Ensure there's a public setter in the module.").withCause(e).withModel(this).build();
+            throw AlexaStateException.create("Could not access field " + fieldName + " in model for writing. Ensure there's a public setter in the module.").withCause(e).withModel(this).build();
         }
     }
 
@@ -174,10 +174,10 @@ public abstract class AlexaStateModel {
      * will result in its value being written to the field of this model. Those fields needs to have the AlexaStateSave-annotation
      * otherwise they will not be considered even though there name match with a key in the given json.
      * @param json A json with key-value-pairs where the keys likely equal some of the AlexaStateSave-tagged fields in this model.
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields.
      */
-    public boolean fromJSON(String json) throws AlexaStateErrorException {
+    public boolean fromJSON(String json) throws AlexaStateException {
         // by default take over everything from json to fields that map in this model
         // session-scope covers it all
         return fromJSON(json, AlexaScope.SESSION);
@@ -189,10 +189,10 @@ public abstract class AlexaStateModel {
      * with the given scope otherwise they will not be considered even though there name match with a key in the given json.
      * @param json A json with key-value-pairs where the keys likely equal some of the AlexaStateSave-tagged with given scope fields in this model.
      * @param scope The scope a AlexaStateSave-annotated field must have to be considered for value assignment
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields with given scope.
      */
-    public boolean fromJSON(String json, AlexaScope scope) throws AlexaStateErrorException {
+    public boolean fromJSON(String json, AlexaScope scope) throws AlexaStateException {
         Boolean modelChanged = false;
         final Map<String, Object> attributes = ConversionUtils.mapJson(json);
         // go through all fields tagged as savestate and is within a scope
@@ -210,10 +210,10 @@ public abstract class AlexaStateModel {
      * Returns a json with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      * in the given scope
      * @param scope The scope a AlexaStateSave-annotated field must have or be part of to be considered in the returned json
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return A json-string with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
-    public String toJSON(AlexaScope scope) throws AlexaStateErrorException {
+    public String toJSON(AlexaScope scope) throws AlexaStateException {
         // for each scope there is a custom json serializer so initialize the one which corresponds to the given scope
         final AlexaStateSerializer serializer = AlexaScope.APPLICATION.equals(scope) ?
                 new AlexaAppStateSerializer() : AlexaScope.USER.equals(scope) ?
@@ -227,7 +227,7 @@ public abstract class AlexaStateModel {
             // serialize model which only contains those fields tagged with the given scope
             return mapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            throw AlexaStateErrorException.create("Error while serializing model as Json.").withCause(e).withModel(this).build();
+            throw AlexaStateException.create("Error while serializing model as Json.").withCause(e).withModel(this).build();
         }
     }
 
@@ -235,10 +235,10 @@ public abstract class AlexaStateModel {
      * Returns a map with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      * in the given scope
      * @param scope The scope a AlexaStateSave-annotated field must have or be part of to be considered in the returned map
-     * @throws AlexaStateErrorException Wraps all inner exceptions and gives you context related to handler and model
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return A map with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
-    public Map<String, Object> toMap(AlexaScope scope) throws AlexaStateErrorException {
+    public Map<String, Object> toMap(AlexaScope scope) throws AlexaStateException {
         // for each scope there is a custom json serializer so initialize the one which corresponds to the given scope
         return ConversionUtils.mapJson(toJSON(scope));
     }

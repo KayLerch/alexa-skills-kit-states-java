@@ -10,7 +10,7 @@ import com.amazon.speech.speechlet.Session;
 import me.lerch.alexa.state.model.AlexaScope;
 import me.lerch.alexa.state.model.AlexaStateModel;
 import me.lerch.alexa.state.model.AlexaStateModelFactory;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -87,7 +87,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(AlexaStateModel model) throws AlexaStateErrorException {
+    public void writeModel(AlexaStateModel model) throws AlexaStateException {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
         final String attributeKey = getAttributeKey(model);
@@ -98,7 +98,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
+    public void removeModel(AlexaStateModel model) throws AlexaStateException {
         final String attributeKey = getAttributeKey(model);
         session.removeAttribute(attributeKey);
     }
@@ -107,7 +107,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass) throws AlexaStateException {
         final String attributeKey = getAttributeKey(modelClass);
         // look for any key which starts with the model class name as id is unknown
         Optional<String> firstKey = session.getAttributes().keySet().stream().filter(key -> key.startsWith(attributeKey)).findFirst();
@@ -127,7 +127,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     @SuppressWarnings("unchecked")
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass, String id) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass, String id) throws AlexaStateException {
         final String attributeKey = getAttributeKey(modelClass, id);
         final Object o = session.getAttribute(attributeKey);
         if (o == null) return Optional.empty();

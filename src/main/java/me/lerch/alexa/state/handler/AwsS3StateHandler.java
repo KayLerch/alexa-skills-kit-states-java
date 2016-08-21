@@ -7,21 +7,15 @@
 package me.lerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.*;
-import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.S3Object;
 import me.lerch.alexa.state.model.AlexaScope;
 import me.lerch.alexa.state.model.AlexaStateModel;
-import me.lerch.alexa.state.utils.AlexaStateErrorException;
+import me.lerch.alexa.state.utils.AlexaStateException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -31,7 +25,7 @@ import java.util.Optional;
  * session. For each individual scope (which is described by the Alexa User Id there will be a directory in your bucket which
  * then contains files - one for each instance of a saved model.
  */
-public class AwsS3StateHandler extends AlexaSessionStateHandler {
+public class AWSS3StateHandler extends AlexaSessionStateHandler {
 
     private final AmazonS3Client awsClient;
     private final String bucketName;
@@ -45,7 +39,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * @param session The Alexa session of your current skill invocation.
      * @param bucketName The bucket where all saved states will go into.
      */
-    public AwsS3StateHandler(final Session session, final String bucketName) {
+    public AWSS3StateHandler(final Session session, final String bucketName) {
         this(session, new AmazonS3Client(), bucketName);
     }
 
@@ -56,7 +50,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * @param awsClient An AWS client capable of getting and putting objects to the given bucket.
      * @param bucketName The bucket where all saved states will go into.
      */
-    public AwsS3StateHandler(final Session session, final AmazonS3Client awsClient, final String bucketName) {
+    public AWSS3StateHandler(final Session session, final AmazonS3Client awsClient, final String bucketName) {
         super(session);
         this.awsClient = awsClient;
         this.bucketName = bucketName;
@@ -66,7 +60,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(final AlexaStateModel model) throws AlexaStateErrorException {
+    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
         // write to session
         super.writeModel(model);
         boolean hasAppScopedFields = model.getSaveStateFields(AlexaScope.APPLICATION).stream().findAny().isPresent();
@@ -93,7 +87,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
+    public void removeModel(AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         // removeState user-scoped file
         awsClient.deleteObject(bucketName, getUserScopedFilePath(model.getClass(), model.getId()));
@@ -105,7 +99,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
         return this.readModel(modelClass, null);
     }
 
@@ -113,7 +107,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateErrorException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
@@ -149,14 +143,14 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
 
     }
 
-    private boolean fromS3FileContentsToModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateErrorException {
+    private boolean fromS3FileContentsToModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateException {
         // read from item with scoped model
         final String filePath = AlexaScope.APPLICATION.includes(scope) ? getAppScopedFilePath(alexaStateModel.getClass(), id) : getUserScopedFilePath(alexaStateModel.getClass(), id);
         // extract values from json and assign it to model
         return awsClient.doesObjectExist(bucketName, filePath) && alexaStateModel.fromJSON(getS3FileContentsAsString(filePath), scope);
     }
 
-    private String getS3FileContentsAsString(final String filePath) throws AlexaStateErrorException {
+    private String getS3FileContentsAsString(final String filePath) throws AlexaStateException {
         final S3Object file = awsClient.getObject(bucketName, filePath);
         final BufferedReader reader = new BufferedReader(new InputStreamReader(file.getObjectContent()));
         final StringBuilder sb = new StringBuilder();
@@ -166,7 +160,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
                 sb.append(line);
             }
         } catch (IOException e) {
-            throw AlexaStateErrorException.create("Could not read from S3-file " + filePath).withCause(e).withHandler(this).build();
+            throw AlexaStateException.create("Could not read from S3-file " + filePath).withCause(e).withHandler(this).build();
         }
         final String fileContents = sb.toString();
         return fileContents.isEmpty() ? "{}" : fileContents;
