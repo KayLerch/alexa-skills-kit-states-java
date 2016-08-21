@@ -206,7 +206,7 @@ we constructed the models in chapter 3. Constructing and saving a model with
 or without and Id potentially overwrites an existing model in the store.
 Take the last code-lines as a best-practice of constructing your models.
 
-Assume we used a _AwsDynamoStateHandler_ or _AwsS3StateHandler_ for reading
+Assume we used a _AWSDynamoStateHandler_ or _AWSS3StateHandler_ for reading
 out _bob_'s state and we want use it throughout the current session without getting
 back to S3 or DynamoDB a second time. Well, ...
 ```java
@@ -234,7 +234,7 @@ Get detailled information of this SDKs in the [Javadocs](https://cdn.rawgit.com/
 One last example. Running _userScored("Bob", 100)_
 ```java
 void userScored(String player, Integer score) throws AlexaStateErrorException {
-    AlexaStateHandler handler = new AwsDynamoStateHandler(this.session);
+    AlexaStateHandler handler = new AWSDynamoStateHandler(this.session);
     User user = handler.readModel(User.class, player).orElse(handler.createModel(User.class, player));
     // check if last score is player's personal highscore
     if (user.getPersonalHighscore() < score) {
