@@ -205,8 +205,8 @@ One last example. Running _userScored("Bob", 100)_
 ```java
 void userScored(String player, Integer score) throws AlexaStateErrorException {
     AlexaStateHandler handler = new AwsDynamoStateHandler(this.session);
-    User user = handler.readModel(User.class, player).orElse(handler.createModel(User.class, player));;
-    // check if last score is bob's personal highscore
+    User user = handler.readModel(User.class, player).orElse(handler.createModel(User.class, player));
+    // check if last score is player's personal highscore
     if (user.getPersonalHighscore() < score) {
         user.setPersonalHighscore(score);
         user.saveState();
