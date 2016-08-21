@@ -1,3 +1,5 @@
+__Current state__: Collecting feedback, do serious testing
+
 #Alexa Skills Kit extensions SDK for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
 gives you a really convenient alternative of __persisting session state in a growing
