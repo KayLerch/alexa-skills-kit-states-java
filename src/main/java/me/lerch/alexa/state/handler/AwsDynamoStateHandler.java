@@ -163,7 +163,7 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) {
+    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
         super.removeModel(model);
         // removeState user-scoped item
         awsClient.deleteItem(tableName, getUserScopedKeyAttributes(model.getClass(), model.getId()));
@@ -215,8 +215,15 @@ public class AwsDynamoStateHandler extends AlexaSessionStateHandler {
         // this gives you access to user- and app-scoped attributes throughout a session without reading from db over and over again
         if (modelChanged) {
             super.writeModel(model);
+            return Optional.of(model);
         }
-        return Optional.of(model);
+        else {
+            // get all fields which are session-scoped
+            final boolean hasSessionScopedFields = !model.getSaveStateFields(AlexaScope.SESSION).isEmpty();
+            // if there was nothing received from dynamo and there is nothing to return from session
+            // then its not worth return the model. better indicate this model does not exist
+            return hasSessionScopedFields ? Optional.of(model) : Optional.empty();
+        }
     }
 
     private boolean fromDbStatetoModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateErrorException {

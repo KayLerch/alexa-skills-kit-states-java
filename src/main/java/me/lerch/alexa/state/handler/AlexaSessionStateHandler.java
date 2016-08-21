@@ -98,7 +98,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) {
+    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
         final String attributeKey = getAttributeKey(model);
         session.removeAttribute(attributeKey);
     }

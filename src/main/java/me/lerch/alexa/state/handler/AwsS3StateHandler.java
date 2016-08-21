@@ -1,6 +1,6 @@
 /**
  * Made by Kay Lerch (https://twitter.com/KayLerch)
- *
+ * <p>
  * Attached license applies.
  * This library is licensed under GNU GENERAL PUBLIC LICENSE Version 3 as of 29 June 2007
  */
@@ -93,7 +93,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) {
+    public void removeModel(AlexaStateModel model) throws AlexaStateErrorException {
         super.removeModel(model);
         // removeState user-scoped file
         awsClient.deleteObject(bucketName, getUserScopedFilePath(model.getClass(), model.getId()));
@@ -122,7 +122,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
         final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
         // get all fields which are app-scoped
         final boolean hasAppScopedFields = !model.getSaveStateFields(AlexaScope.APPLICATION).isEmpty();
-        // we need to remember if there will be something from dynamodb to be written to the model
+        // we need to remember if there will be something from S3 to be written to the model
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
@@ -137,21 +137,23 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
         // this gives you access to user- and app-scoped attributes throughout a session without reading from S3 over and over again
         if (modelChanged) {
             super.writeModel(model);
+            return Optional.of(model);
         }
-        return Optional.of(model);
+        else {
+            // get all fields which are session-scoped
+            final boolean hasSessionScopedFields = !model.getSaveStateFields(AlexaScope.SESSION).isEmpty();
+            // if there was nothing received from S3 and there is nothing to return from session
+            // then its not worth return the model. better indicate this model does not exist
+            return hasSessionScopedFields ? Optional.of(model) : Optional.empty();
+        }
+
     }
 
     private boolean fromS3FileContentsToModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateErrorException {
-        // do only read from file if model has fields tagged with given scope
-        if (!alexaStateModel.getSaveStateFields(scope).isEmpty()) {
-            // read from item with scoped model
-            final String filePath = AlexaScope.APPLICATION.includes(scope) ? getAppScopedFilePath(alexaStateModel.getClass(), id) : getUserScopedFilePath(alexaStateModel.getClass(), id);
-            if (awsClient.doesObjectExist(bucketName, filePath)) {
-                // extract values from json and assign it to model
-                return alexaStateModel.fromJSON(getS3FileContentsAsString(filePath), scope);
-            }
-        }
-        return false;
+        // read from item with scoped model
+        final String filePath = AlexaScope.APPLICATION.includes(scope) ? getAppScopedFilePath(alexaStateModel.getClass(), id) : getUserScopedFilePath(alexaStateModel.getClass(), id);
+        // extract values from json and assign it to model
+        return awsClient.doesObjectExist(bucketName, filePath) && alexaStateModel.fromJSON(getS3FileContentsAsString(filePath), scope);
     }
 
     private String getS3FileContentsAsString(final String filePath) throws AlexaStateErrorException {
@@ -160,7 +162,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
         final StringBuilder sb = new StringBuilder();
         String line;
         try {
-            while((line = reader.readLine()) != null){
+            while ((line = reader.readLine()) != null) {
                 sb.append(line);
             }
         } catch (IOException e) {
@@ -175,7 +177,7 @@ public class AwsS3StateHandler extends AlexaSessionStateHandler {
     }
 
     private <TModel extends AlexaStateModel> String getUserScopedFilePath(Class<TModel> modelClass, String id) {
-        return  session.getUser().getUserId() + "/" + getAttributeKey(modelClass, id) + "." + fileExtension;
+        return session.getUser().getUserId() + "/" + getAttributeKey(modelClass, id) + "." + fileExtension;
     }
 
     private <TModel extends AlexaStateModel> String getAppScopedFilePath(Class<TModel> modelClass) {

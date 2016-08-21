@@ -34,7 +34,7 @@ public abstract class AlexaStateModel {
 
     private String __internalId;
     private AlexaStateHandler __handler;
-    private final String validIdPattern = "[a-zA-Z0-9_\\-\\.]+";
+    private final String validIdPattern = "[a-zA-Z0-9_\\-]+";
 
     /**
      * Sets an id for this model instance. The id should be an unique identifier within a model-type within an AlexaScope.
