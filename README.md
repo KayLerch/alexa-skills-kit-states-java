@@ -83,7 +83,7 @@ the _level_ is ignored and will not persist in your session.
 
 Regarding type support of _@AlexaStateSave_ there's a rule of thumb saying
 whatever [Jackson](http://wiki.fasterxml.com/JacksonHome)'s JsonSerializer can handle is allowed. This not only covers
-Strings, Ints and Boolean but also works fine for Arrays, Lists and Hashmaps.
+Strings, Ints and Booleans but also works fine for Arrays, Lists and Key-Value-Collections.
 
 ## 2) Choose your _AlexaStateHandler_
 Depending on where you want to save your model's states you can pick from
