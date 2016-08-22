@@ -68,6 +68,15 @@ public abstract class AlexaStateModel {
     }
 
     /**
+     * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
+     * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
+     * @param handler a state handler implementation
+     * @return abstract representation of your model
+     */
+    public AlexaStateModel withHandler(final AlexaStateHandler handler) {
+        setHandler(handler); return this; }
+
+    /**
      * Gets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
      * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
      * @return the state handler

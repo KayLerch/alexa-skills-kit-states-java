@@ -178,10 +178,9 @@ were constructed without the handler. Feel free to introduce your model
 to another handler with its _setHandler(AlexaStateHandler handler)_ at
 any time. Let's say you want to save _bob_'s state in S3 and in DynamoDB.
 ```java
-bob.setHandler(s3Handler);
-bob.saveState();
-bob.setHandler(dynamoHandler);
-bob.saveState();
+bob.withHandler(s3Handler).saveState();
+// or like this
+dynamoHandler.writeModel(bob);
 ```
 ## 5) Read state of your model from memory
 So real Bob is leaving his Echo for a week. After some days he's asking
@@ -228,8 +227,8 @@ handler.readModel(User.class, "Bob").ifPresent(bob -> bob.removeState());
 ```
 ## See how it works
 Putting it together, there's a lot you can do with these extensions in
-regards to state mangement in your Alexa skill.
-Get detailled information of this SDKs in the [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/index.html).
+regards to state management in your Alexa skill.
+Get detailed information for this SDK in the [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/index.html).
 
 One last example. Running _userScored("Bob", 100)_
 ```java
