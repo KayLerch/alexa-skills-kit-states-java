@@ -1,6 +1,6 @@
 /**
  * Made by Kay Lerch (https://twitter.com/KayLerch)
- *
+ * <p>
  * Attached license applies.
  * This library is licensed under GNU GENERAL PUBLIC LICENSE Version 3 as of 29 June 2007
  */
@@ -188,12 +188,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // querying dynamodb in the following lines. only if this is true model will be written back to session
         final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
-        // get all fields which are user-scoped
-        final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
-        // get all fields which are app-scoped
-        final boolean hasAppScopedFields = !model.getSaveStateFields(AlexaScope.APPLICATION).isEmpty();
         // must ensure table is existing in case there are user- or app-scoped field awaiting values from db
-        if (hasUserScopedFields || hasAppScopedFields) {
+        if (model.hasUserScopedField() || model.hasApplicationScopedField()) {
             try {
                 ensureTableExists();
             } catch (InterruptedException e) {
@@ -204,11 +200,11 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
-        if (fromDbStatetoModel(model, id, AlexaScope.USER)) {
+        if (model.hasUserScopedField() && fromDbStatetoModel(model, id, AlexaScope.USER)) {
             modelChanged = true;
         }
         // and if there are app-scoped fields ...
-        if (fromDbStatetoModel(model, id, AlexaScope.APPLICATION)) {
+        if (model.hasApplicationScopedField() && fromDbStatetoModel(model, id, AlexaScope.APPLICATION)) {
             modelChanged = true;
         }
         // so if model changed from within something out of dynamodb we want this to be in the speechlet as well
@@ -216,8 +212,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         if (modelChanged) {
             super.writeModel(model);
             return Optional.of(model);
-        }
-        else {
+        } else {
             // get all fields which are session-scoped
             final boolean hasSessionScopedFields = !model.getSaveStateFields(AlexaScope.SESSION).isEmpty();
             // if there was nothing received from dynamo and there is nothing to return from session
@@ -227,20 +222,16 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     }
 
     private boolean fromDbStatetoModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateException {
-        // do only read from db if model has fields tagged with given scope
-        if (!alexaStateModel.getSaveStateFields(scope).isEmpty()) {
-            // read from item with scoped model
-            final Map<String, AttributeValue> key = AlexaScope.APPLICATION.includes(scope) ? getAppScopedKeyAttributes(alexaStateModel.getClass(), id) : getUserScopedKeyAttributes(alexaStateModel.getClass(), id);
-            final GetItemResult awsResult = awsClient.getItem(tableName, key);
-            final Map<String, AttributeValue> attributes = awsResult.getItem();
-            // if no item found then return false
-            if (attributes == null) return false;
-            // read state as json-string
-            final String json = attributes.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS();
-            // extract values from json and assign it to model
-            return alexaStateModel.fromJSON(json, scope);
-        }
-        return false;
+        // read from item with scoped model
+        final Map<String, AttributeValue> key = AlexaScope.APPLICATION.includes(scope) ? getAppScopedKeyAttributes(alexaStateModel.getClass(), id) : getUserScopedKeyAttributes(alexaStateModel.getClass(), id);
+        final GetItemResult awsResult = awsClient.getItem(tableName, key);
+        final Map<String, AttributeValue> attributes = awsResult.getItem();
+        // if no item found then return false
+        if (attributes == null) return false;
+        // read state as json-string
+        final String json = attributes.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS();
+        // extract values from json and assign it to model
+        return alexaStateModel.fromJSON(json, scope);
     }
 
     private void ensureTableExists() throws InterruptedException {

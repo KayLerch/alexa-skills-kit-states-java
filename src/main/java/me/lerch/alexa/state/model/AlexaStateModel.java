@@ -31,10 +31,18 @@ import java.util.stream.Collectors;
  * This abstract class turns your POJO model into a model compatible to the AlexaStateHandler.
  */
 public abstract class AlexaStateModel {
-
+    @AlexaStateIgnore
     private String __internalId;
+    @AlexaStateIgnore
     private AlexaStateHandler __handler;
+    @AlexaStateIgnore
     private final String validIdPattern = "[a-zA-Z0-9_\\-]+";
+    @AlexaStateIgnore
+    private Boolean hasSessionScopedFields;
+    @AlexaStateIgnore
+    private Boolean hasApplicationScopedFields;
+    @AlexaStateIgnore
+    private Boolean hasUserScopedFields;
 
     /**
      * Sets an id for this model instance. The id should be an unique identifier within a model-type within an AlexaScope.
@@ -253,6 +261,36 @@ public abstract class AlexaStateModel {
     }
 
     /**
+     * It returns if any AlexaStateSave field is in the model scoped in SESSION
+     * @return True, if there are any AlexaStateSave fields in the model scoped in SESSION
+     */
+    public Boolean hasSessionScopedField() {
+        hasSessionScopedFields = (hasSessionScopedFields != null) ? hasSessionScopedFields :
+                hasFieldInScope(AlexaScope.SESSION);
+        return hasSessionScopedFields;
+    }
+
+    /**
+     * It returns if any AlexaStateSave field is in the model scoped in USER
+     * @return True, if there are any AlexaStateSave fields in the model scoped in USER
+     */
+    public Boolean hasUserScopedField() {
+        hasUserScopedFields = (hasUserScopedFields != null) ? hasUserScopedFields :
+                hasFieldInScope(AlexaScope.USER);
+        return hasUserScopedFields;
+    }
+
+    /**
+     * It returns if any AlexaStateSave field is in the model scoped in APPLICATION
+     * @return True, if there are any AlexaStateSave fields in the model scoped in APPLICATION
+     */
+    public Boolean hasApplicationScopedField() {
+        hasApplicationScopedFields = (hasApplicationScopedFields != null) ? hasApplicationScopedFields :
+                hasFieldInScope(AlexaScope.APPLICATION);
+        return hasApplicationScopedFields;
+    }
+
+    /**
      * Gives you all the fields of this model which are annotated with AlexaStateSave
      * @return list of all the fields of this model which are annotated with AlexaStateSave
      */
@@ -297,6 +335,10 @@ public abstract class AlexaStateModel {
         return ((!field.isAnnotationPresent(AlexaStateIgnore.class)) &&
                 ((field.isAnnotationPresent(AlexaStateSave.class) && scope.includes(field.getAnnotation(AlexaStateSave.class).Scope()) ||
                         (this.getClass().isAnnotationPresent(AlexaStateSave.class) && scope.includes(this.getClass().getAnnotation(AlexaStateSave.class).Scope())))));
+    }
+
+    private boolean hasFieldInScope(final AlexaScope scope) {
+        return getSaveStateFields(scope).stream().findAny().isPresent();
     }
 
     static final class AlexaModelBuilder {

@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
@@ -34,7 +36,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     private final String thingAttributeName = "name";
     private final String thingAttributeUser = "amzn-user-id";
     private final String thingAttributeApp = "amzn-app-id";
-    private boolean thingExistsApproved = false;
+    private List<String> thingsExisting = new ArrayList<>();
 
     public AWSIotStateHandler(final Session session) {
         this(session, new AWSIotClient(), new AWSIotDataClient());
@@ -54,14 +56,11 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // write to session
         super.writeModel(model);
 
-        boolean hasAppScopedFields = model.getSaveStateFields(AlexaScope.APPLICATION).stream().findAny().isPresent();
-        boolean hasUserScopedFields = model.getSaveStateFields(AlexaScope.USER).stream().findAny().isPresent();
-
-        if (hasUserScopedFields) {
-            publishState(getUserScopedThingName(), model, AlexaScope.USER);
+        if (model.hasUserScopedField()) {
+            publishState(model, AlexaScope.USER);
         }
-        if (hasAppScopedFields) {
-            publishState(getAppScopedThingName(), model, AlexaScope.APPLICATION);
+        if (model.hasApplicationScopedField()) {
+            publishState(model, AlexaScope.APPLICATION);
         }
     }
 
@@ -79,16 +78,12 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     @Override
     public void removeModel(AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
-        // get all fields which are user-scoped
-        final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
-        // get all fields which are app-scoped
-        final boolean hasAppScopedFields = !model.getSaveStateFields(AlexaScope.APPLICATION).isEmpty();
         final String nodeName = getAttributeKey(model);
 
-        if (hasUserScopedFields) {
+        if (model.hasSessionScopedField() || model.hasUserScopedField()) {
             removeModelFromShadow(model, AlexaScope.USER);
         }
-        if (hasAppScopedFields) {
+        if (model.hasApplicationScopedField()) {
             removeModelFromShadow(model, AlexaScope.APPLICATION);
         }
     }
@@ -102,19 +97,15 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
         final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
-        // get all fields which are user-scoped
-        final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
-        // get all fields which are app-scoped
-        final boolean hasAppScopedFields = !model.getSaveStateFields(AlexaScope.APPLICATION).isEmpty();
         // we need to remember if there will be something from thing shadow to be written to the model
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
-        if (hasUserScopedFields && fromThingShadowToModel(model, AlexaScope.USER)) {
+        if (model.hasUserScopedField() && fromThingShadowToModel(model, AlexaScope.USER)) {
             modelChanged = true;
         }
         // and if there are app-scoped fields ...
-        if (hasAppScopedFields && fromThingShadowToModel(model, AlexaScope.APPLICATION)) {
+        if (model.hasApplicationScopedField() && fromThingShadowToModel(model, AlexaScope.APPLICATION)) {
             modelChanged = true;
         }
         // so if model changed from within something out of the shadow we want this to be in the speechlet as well
@@ -132,10 +123,46 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         }
     }
 
+    /**
+     * Returns name of the thing whose shadow is updated by this handler. It depends on
+     * the scope of the fields persisted in AWS IoT as APPLICATION-scoped fields go to a different
+     * thing shadow than USER-scoped fields.
+     * @param scope The scope this thing is dedicated to
+     * @return Name of the thing for this scope
+     * @throws AlexaStateException Any error regarding thing name generation
+     */
+    public String getThingName(AlexaScope scope) throws AlexaStateException {
+        return AlexaScope.APPLICATION.includes(scope) ? getAppScopedThingName() : getUserScopedThingName();
+    }
+
+    /**
+     * The thing will be created in AWS IoT if not existing for this application (when scope
+     * APPLICATION is given) or for this user in this application (when scope USER is given)
+     * @param scope The scope this thing is dedicated to
+     * @throws AlexaStateException Any error regarding thing creation or existence check
+     */
+    public void createThingIfNotExisting(final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+        if (!doesThingExist(thingName)) {
+            createThing(thingName, scope);
+        }
+    }
+
+    /**
+     * Returns if the thing dedicated to the scope given is existing in AWS IoT.
+     * @param scope The scope this thing is dedicated to
+     * @return True, if the thing dedicated to the scope given is existing in AWS IoT.
+     * @throws AlexaStateException Any error regarding thing creation or existence check
+     */
+    public boolean doesThingExist(final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+        return doesThingExist(thingName);
+    }
+
     private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         final String nodeName = getAttributeKey(model);
-        final String thingName = AlexaScope.USER.includes(scope) ? getUserScopedThingName() : getAppScopedThingName();
-        final String thingState = getState(thingName, scope);
+        final String thingName = getThingName(scope);
+        final String thingState = getState(scope);
         try {
             final ObjectMapper mapper = new ObjectMapper();
             final JsonNode root = mapper.readTree(thingState);
@@ -154,8 +181,8 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
     private boolean fromThingShadowToModel(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         // read from item with scoped model
-        final String thingName = AlexaScope.APPLICATION.includes(scope) ? getAppScopedThingName() : getUserScopedThingName();
-        final String thingState = getState(thingName, scope);
+        final String thingName = getThingName(scope);
+        final String thingState = getState(scope);
         final String nodeName = getAttributeKey(model);
         try {
             final ObjectMapper mapper = new ObjectMapper();
@@ -187,8 +214,10 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         return session.getApplication().getApplicationId().replace(".", "-");
     }
 
-    private String getState(final String thingName, final AlexaScope scope) throws AlexaStateException {
-        createThingOfNotExisting(thingName, scope);
+    private String getState(final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+
+        createThingIfNotExisting(scope);
 
         final GetThingShadowRequest awsRequest = new GetThingShadowRequest().withThingName(thingName);
         try {
@@ -209,8 +238,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    private void publishState(final String thingName, final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
-        createThingOfNotExisting(thingName, scope);
+    private void publishState(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+        createThingIfNotExisting(scope);
         final String payload = "{\"state\":{\"desired\":{\"" + getAttributeKey(model) + "\":" + model.toJSON(scope) + "}}}";
         publishState(thingName, payload);
     }
@@ -224,14 +254,6 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         }
         final UpdateThingShadowRequest iotRequest = new UpdateThingShadowRequest().withThingName(thingName).withPayload(buffer);
         awsDataClient.updateThingShadow(iotRequest);
-    }
-
-    private boolean createThingOfNotExisting(final String thingName, final AlexaScope scope) {
-        if (!doesThingExist(thingName)) {
-            createThing(thingName, scope);
-            return true;
-        }
-        return false;
     }
 
     private void createThing(final String thingName, final AlexaScope scope) {
@@ -253,11 +275,14 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
     private boolean doesThingExist(final String thingName) {
         // if already checked existence than return immediately
-        if (thingExistsApproved) return true;
+        if (thingsExisting.contains(thingName)) return true;
         // query by an attribute having the name of the thing
         // unfortunately you can only query for things with their attributes, not directly with their names
         final ListThingsRequest request = new ListThingsRequest().withAttributeName(thingAttributeName).withAttributeValue(thingName).withMaxResults(1);
-        thingExistsApproved = !awsClient.listThings(request).getThings().isEmpty();
-        return thingExistsApproved;
+        if(!awsClient.listThings(request).getThings().isEmpty()) {
+            thingsExisting.add(thingName);
+            return true;
+        }
+        return false;
     }
 }

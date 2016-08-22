@@ -6,7 +6,7 @@
 
     <groupId>me.lerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 
     <build>
         <plugins>
@@ -53,6 +53,7 @@
             <artifactId>aws-java-sdk-iot</artifactId>
             <version>1.11.26</version>
         </dependency>
+
     </dependencies>
 
 </project>

@@ -63,17 +63,15 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     public void writeModel(final AlexaStateModel model) throws AlexaStateException {
         // write to session
         super.writeModel(model);
-        boolean hasAppScopedFields = model.getSaveStateFields(AlexaScope.APPLICATION).stream().findAny().isPresent();
-        boolean hasUserScopedFields = model.getSaveStateFields(AlexaScope.USER).stream().findAny().isPresent();
 
-        if (hasUserScopedFields) {
+        if (model.hasUserScopedField()) {
             final String filePath = getUserScopedFilePath(model.getClass(), model.getId());
             // add json as new content of file
             final String fileContents = model.toJSON(AlexaScope.USER);
             // write all user-scoped attributes to file
             awsClient.putObject(bucketName, filePath, fileContents);
         }
-        if (hasAppScopedFields) {
+        if (model.hasApplicationScopedField()) {
             // add primary keys as attributes
             final String filePath = getAppScopedFilePath(model.getClass(), model.getId());
             // add json as new content of file
@@ -90,9 +88,11 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     public void removeModel(AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         // removeState user-scoped file
-        awsClient.deleteObject(bucketName, getUserScopedFilePath(model.getClass(), model.getId()));
+        if (model.hasUserScopedField())
+            awsClient.deleteObject(bucketName, getUserScopedFilePath(model.getClass(), model.getId()));
         // removeState app-scoped file
-        awsClient.deleteObject(bucketName, getAppScopedFilePath(model.getClass(), model.getId()));
+        if (model.hasApplicationScopedField())
+            awsClient.deleteObject(bucketName, getAppScopedFilePath(model.getClass(), model.getId()));
     }
 
     /**
@@ -112,19 +112,15 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
         final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
-        // get all fields which are user-scoped
-        final boolean hasUserScopedFields = !model.getSaveStateFields(AlexaScope.USER).isEmpty();
-        // get all fields which are app-scoped
-        final boolean hasAppScopedFields = !model.getSaveStateFields(AlexaScope.APPLICATION).isEmpty();
         // we need to remember if there will be something from S3 to be written to the model
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
-        if (hasUserScopedFields && fromS3FileContentsToModel(model, id, AlexaScope.USER)) {
+        if (model.hasUserScopedField() && fromS3FileContentsToModel(model, id, AlexaScope.USER)) {
             modelChanged = true;
         }
         // and if there are app-scoped fields ...
-        if (hasAppScopedFields && fromS3FileContentsToModel(model, id, AlexaScope.APPLICATION)) {
+        if (model.hasApplicationScopedField() && fromS3FileContentsToModel(model, id, AlexaScope.APPLICATION)) {
             modelChanged = true;
         }
         // so if model changed from within something out of S3 we want this to be in the speechlet as well
