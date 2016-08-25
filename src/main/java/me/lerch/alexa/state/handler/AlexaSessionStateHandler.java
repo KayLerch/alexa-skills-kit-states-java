@@ -91,7 +91,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
         final String attributeKey = getAttributeKey(model);
-        session.setAttribute(attributeKey, model.toMap(AlexaScope.SESSION));
+        session.setAttribute(attributeKey, model.toJSON(AlexaScope.SESSION, true));
     }
 
     /**
@@ -131,7 +131,11 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         final String attributeKey = getAttributeKey(modelClass, id);
         final Object o = session.getAttribute(attributeKey);
         if (o == null) return Optional.empty();
-        // expect o to be a map of key-values
+        if (o instanceof String) {
+            final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
+            model.fromJSON((String)o);
+            return model != null ? Optional.of(model) : Optional.empty();
+        }
         if (o instanceof Map<?, ?>) {
             final Map<?, ?> childAttributes = (Map<?, ?>) o;
             final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
