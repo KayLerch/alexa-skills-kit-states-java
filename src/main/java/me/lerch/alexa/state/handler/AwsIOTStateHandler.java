@@ -115,11 +115,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             return Optional.of(model);
         }
         else {
-            // get all fields which are session-scoped
-            final boolean hasSessionScopedFields = !model.getSaveStateFields(AlexaScope.SESSION).isEmpty();
             // if there was nothing received from IOT and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
-            return hasSessionScopedFields ? Optional.of(model) : Optional.empty();
+            return model.hasSessionScopedField() ? Optional.of(model) : Optional.empty();
         }
     }
 

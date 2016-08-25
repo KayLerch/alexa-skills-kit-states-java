@@ -6,7 +6,7 @@
 
     <groupId>me.lerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.4</version>
 
     <build>
         <plugins>
@@ -47,13 +47,14 @@
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-dynamodb</artifactId>
             <version>1.11.26</version>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-iot</artifactId>
             <version>1.11.26</version>
+            <optional>true</optional>
         </dependency>
-
     </dependencies>
 
 </project>
