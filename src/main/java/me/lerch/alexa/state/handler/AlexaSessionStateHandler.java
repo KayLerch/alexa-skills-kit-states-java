@@ -51,7 +51,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * @return key used to save the model in the session attributes
      */
     <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, String id) {
-        return modelClass.getSimpleName() + (id != null && !id.isEmpty() ? "#" + id : "");
+        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? ":" + id : "");
     }
 
     /**
