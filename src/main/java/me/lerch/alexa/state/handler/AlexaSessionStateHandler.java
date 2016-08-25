@@ -38,7 +38,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * @param <TModel> The model type derived from AlexaStateModel.
      * @return key used to save the model in the session attributes
      */
-    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
+    private <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
         return getAttributeKey(modelClass, null);
     }
 
@@ -51,7 +51,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * @return key used to save the model in the session attributes
      */
     <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, String id) {
-        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? ":" + id : "");
+        return modelClass.getSimpleName() + (id != null && !id.isEmpty() ? "#" + id : "");
     }
 
     /**
@@ -91,7 +91,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
         final String attributeKey = getAttributeKey(model);
-        session.setAttribute(attributeKey, model.toJSON(AlexaScope.SESSION, true));
+        session.setAttribute(attributeKey, model.toMap(AlexaScope.SESSION));
     }
 
     /**
@@ -131,11 +131,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         final String attributeKey = getAttributeKey(modelClass, id);
         final Object o = session.getAttribute(attributeKey);
         if (o == null) return Optional.empty();
-        if (o instanceof String) {
-            final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
-            model.fromJSON((String)o);
-            return model != null ? Optional.of(model) : Optional.empty();
-        }
+
         if (o instanceof Map<?, ?>) {
             final Map<?, ?> childAttributes = (Map<?, ?>) o;
             final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
@@ -148,6 +144,11 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
                 }
             }
             return model != null ? Optional.of(model) : Optional.empty();
+        }
+        else if (o instanceof String) {
+            final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
+            model.fromJSON((String)o);
+            return Optional.of(model);
         }
         else {
             // if not a map than expect it to be the model
