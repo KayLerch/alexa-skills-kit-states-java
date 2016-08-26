@@ -7,7 +7,6 @@
 package me.lerch.alexa.state.model;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.io.CharacterEscapes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import me.lerch.alexa.state.handler.AlexaStateHandler;
@@ -17,7 +16,6 @@ import me.lerch.alexa.state.model.serializer.AlexaStateSerializer;
 import me.lerch.alexa.state.model.serializer.AlexaUserStateSerializer;
 import me.lerch.alexa.state.utils.AlexaStateException;
 import me.lerch.alexa.state.utils.ConversionUtils;
-import me.lerch.alexa.state.utils.JsonCharacterEscapes;
 import me.lerch.alexa.state.utils.ReflectionUtils;
 import org.apache.commons.lang3.Validate;
 
@@ -27,6 +25,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -69,7 +68,7 @@ public abstract class AlexaStateModel {
     }
 
     /**
-     * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
+     * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()}.
      * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
      * @param handler a state handler implementation
      */
@@ -78,7 +77,7 @@ public abstract class AlexaStateModel {
     }
 
     /**
-     * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
+     * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()}.
      * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
      * @param handler a state handler implementation
      * @return abstract representation of your model
@@ -87,7 +86,7 @@ public abstract class AlexaStateModel {
         setHandler(handler); return this; }
 
     /**
-     * Gets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
+     * Gets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()}.
      * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
      * @return the state handler
      */
@@ -103,17 +102,6 @@ public abstract class AlexaStateModel {
     public void saveState() throws AlexaStateException {
         Validate.notNull(this.__handler, "Save state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
         this.__handler.writeModel(this);
-    }
-
-    /**
-     * Asks the state handler associated with this model to load values out of the persistence store into all AlexaStateSave-tagged fields of this model.
-     * It will overwrite the current values of those fields.
-     * This method will raise an exception if no handler is set for this model.
-     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
-     */
-    public void loadState() throws AlexaStateException {
-        Validate.notNull(this.__handler, "Refreshing state is not allowed for this model as it needs an AlexaSessionHandler. Assign a handler to this object or use AlexaStateModelFactory.");
-        this.__handler.readModel(this.getClass(), this.getId());
     }
 
     /**
@@ -233,27 +221,12 @@ public abstract class AlexaStateModel {
      * @return A json-string with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
     public String toJSON(final AlexaScope scope) throws AlexaStateException {
-        return toJSON(scope, false);
-    }
-
-    /**
-     * Returns a json with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
-     * in the given scope
-     * @param scope The scope a AlexaStateSave-annotated field must have or be part of to be considered in the returned json
-     * @param escape True if returned string should escape illegal characters in json values
-     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
-     * @return A json-string with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
-     */
-    public String toJSON(final AlexaScope scope, final boolean escape) throws AlexaStateException {
         // for each scope there is a custom json serializer so initialize the one which corresponds to the given scope
         final AlexaStateSerializer serializer = AlexaScope.APPLICATION.equals(scope) ?
                 new AlexaAppStateSerializer() : AlexaScope.USER.equals(scope) ?
                 new AlexaUserStateSerializer() : new AlexaSessionStateSerializer();
         // associate a mapper with the serializer
         final ObjectMapper mapper = new ObjectMapper();
-        if (escape) {
-            mapper.getFactory().setCharacterEscapes(new JsonCharacterEscapes());
-        }
         final SimpleModule module = new SimpleModule();
         module.addSerializer(this.getClass(), serializer);
         mapper.registerModule(module);
@@ -380,7 +353,7 @@ public abstract class AlexaStateModel {
         }
 
         /**
-         * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()} or {@link #loadState()}.
+         * Sets the AlexaStateHandler which takes care of this model when it {@link #saveState()}, {@link #removeState()}.
          * A state handler usually is dedicated to a persistence store which stores the AlexaStateSave-tagged fields of this model
          * @param handler a state handler implementation
          * @return builder

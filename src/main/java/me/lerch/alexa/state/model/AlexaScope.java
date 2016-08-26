@@ -42,6 +42,6 @@ public enum AlexaScope {
         // the given scope needs a lower value than this one to be excluded from this one
         // e.g. fields tagged as session-scope(=0) are not part of the app-scope(=1)
         // e.g. fields tagged as app-scoped(=1) are neither part of user-scope(=1)
-        return scope.getValue() <= this.value;
+        return scope.getValue() <= this.value && !this.equals(scope);
     }
 }

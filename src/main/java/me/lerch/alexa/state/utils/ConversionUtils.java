@@ -8,6 +8,7 @@ package me.lerch.alexa.state.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ public class ConversionUtils {
      */
     public static Map<String, Object> mapJson(final String json) {
         final ObjectMapper mapper = new ObjectMapper();
+        if (json == null || json.isEmpty()) new HashMap<>();
         final TypeReference<HashMap<String,Object>> typeRef = new TypeReference<HashMap<String,Object>>() {};
         try {
             // read jsonString into map

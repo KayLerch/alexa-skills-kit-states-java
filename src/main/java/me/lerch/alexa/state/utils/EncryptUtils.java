@@ -8,6 +8,8 @@ public class EncryptUtils {
     public static String encryptSha1(final String input)
             throws NoSuchAlgorithmException, UnsupportedEncodingException
     {
+        if (input == null) return "";
+
         final MessageDigest md = MessageDigest.getInstance("SHA1");
         md.reset();
         final byte[] buffer = input.getBytes("UTF-8");

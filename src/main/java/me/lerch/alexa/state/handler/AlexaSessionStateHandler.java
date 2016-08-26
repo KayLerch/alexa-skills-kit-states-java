@@ -22,6 +22,7 @@ import java.util.Optional;
  */
 public class AlexaSessionStateHandler implements AlexaStateHandler {
     final Session session;
+    private final String typeWithIdSeparator = ":";
 
     /**
      * Initializes a handler and applies an Alexa Session to persist models.
@@ -50,8 +51,8 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * @param <TModel> The model type derived from AlexaStateModel.
      * @return key used to save the model in the session attributes
      */
-    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, String id) {
-        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? ":" + id : "");
+    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, String id) {
+        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? typeWithIdSeparator + id : "");
     }
 
     /**
@@ -61,7 +62,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * @param model the model to save in the session
      * @return key used to save the model in the session attributes
      */
-    String getAttributeKey(AlexaStateModel model) {
+    public String getAttributeKey(AlexaStateModel model) {
         return getAttributeKey(model.getClass(), model.getId());
     }
 
@@ -108,18 +109,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass) throws AlexaStateException {
-        final String attributeKey = getAttributeKey(modelClass);
-        // look for any key which starts with the model class name as id is unknown
-        Optional<String> firstKey = session.getAttributes().keySet().stream().filter(key -> key.startsWith(attributeKey)).findFirst();
-        if (firstKey.isPresent()) {
-            final String firstKeyForSure = firstKey.get();
-            // extract id from key
-            final String id = firstKeyForSure.substring(firstKeyForSure.indexOf(":") + 1);
-            // read first model from session
-            return readModel(modelClass, id);
-        }
-        // no attribute found which has a prefix like modelClass
-        return Optional.empty();
+        return readModel(modelClass, null);
     }
 
     /**
@@ -136,7 +126,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
             final Map<?, ?> childAttributes = (Map<?, ?>) o;
             final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
             if (model != null) {
-                for (final Field field : model.getSaveStateFields()) {
+                for (final Field field : model.getSaveStateFields(AlexaScope.SESSION)) {
                     final String fieldName = field.getName();
                     if (childAttributes.containsKey(fieldName)) {
                         model.set(field, childAttributes.get(field.getName()));
