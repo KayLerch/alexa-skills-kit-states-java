@@ -10,6 +10,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
@@ -110,7 +112,7 @@ public class AlexaStateModelTest {
 
     @Test
     public void getExisting() throws Exception {
-        Model model = new Model();
+        final Model model = new Model();
         final String value = "value";
         model.sampleString = value;
         final Field field = model.getClass().getField("sampleString");
@@ -118,53 +120,114 @@ public class AlexaStateModelTest {
     }
 
     @Test
-    public void set() throws Exception {
-
+    public void setExisting() throws Exception {
+        final Model model = new Model();
+        final String value = "value";
+        final Field field = model.getClass().getField("sampleString");
+        model.set(field, value);
+        assertEquals(model.sampleString, value);
     }
 
     @Test
     public void fromJSON() throws Exception {
-
+        final String value = "value";
+        final String json = "{\"sampleString\":\"" + value + "\"}";
+        final Model model = new Model();
+        model.fromJSON(json);
+        assertEquals(model.sampleString, value);
     }
 
     @Test
-    public void fromJSON1() throws Exception {
-
+    public void fromJSONInScope() throws Exception {
+        final String value = "value";
+        final String json = "{\"sampleString\":\"" + value + "\"}";
+        final Model model = new Model();
+        model.fromJSON(json, AlexaScope.SESSION);
+        assertEquals(model.sampleString, value);
     }
 
     @Test
-    public void toJSON() throws Exception {
-
+    public void fromJSONWithOutOfScope() throws Exception {
+        final String value = "value";
+        final String json = "{\"sampleString\":\"" + value + "\"}";
+        final Model model = new Model();
+        model.fromJSON(json, AlexaScope.APPLICATION);
+        assertNull(model.sampleString);
     }
 
     @Test
-    public void toMap() throws Exception {
-
+    public void toJSONInScope() throws Exception {
+        final String value = "value";
+        final String json = "{\"id\":null,\"sampleString\":\"" + value + "\",\"sampleUser\":null,\"sampleApplication\":false,\"sampleSession\":[]}";
+        final Model model = new Model();
+        model.sampleString = value;
+        assertEquals(model.toJSON(AlexaScope.SESSION), json);
     }
 
     @Test
-    public void hasSessionScopedField() throws Exception {
-
+    public void toJSONOutOfScope() throws Exception {
+        final String json = "{\"id\":null,\"sampleApplication\":false}";
+        final Model model = new Model();
+        assertEquals(model.toJSON(AlexaScope.APPLICATION), json);
     }
 
     @Test
-    public void hasUserScopedField() throws Exception {
-
+    public void toMapInScope() throws Exception {
+        final String value = "value";
+        final Model model = new Model();
+        model.sampleString = value;
+        final Map<String, Object> map = model.toMap(AlexaScope.SESSION);
+        assertTrue(map.containsKey("sampleString"));
+        assertFalse(map.containsKey("sampleIgnore"));
+        assertEquals(value, map.get("sampleString"));
     }
 
     @Test
-    public void hasApplicationScopedField() throws Exception {
+    public void toMapOutOfScope() throws Exception {
+        final String value = "value";
+        final Model model = new Model();
+        model.sampleString = value;
+        final Map<String, Object> map = model.toMap(AlexaScope.APPLICATION);
+        assertFalse(map.containsKey("sampleString"));
+        assertFalse(map.containsKey("sampleIgnore"));
+    }
 
+    @Test
+    public void hasScopedFieldsTrue() throws Exception {
+        assertTrue(new Model().hasSessionScopedField());
+        assertTrue(new Model().hasApplicationScopedField());
+        assertTrue(new Model().hasUserScopedField());
+    }
+
+    @Test
+    public void hasScopedFieldsFalse() throws Exception {
+        assertFalse(new EmptyModel().hasSessionScopedField());
+        assertFalse(new EmptyModel().hasApplicationScopedField());
+        assertFalse(new EmptyModel().hasUserScopedField());
     }
 
     @Test
     public void getSaveStateFields() throws Exception {
+        List<Field> fields = new Model().getSaveStateFields();
+        assertNotNull(fields);
+        assertFalse(fields.isEmpty());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
 
+        fields = new Model().getSaveStateFields(AlexaScope.APPLICATION);
+        assertNotNull(fields);
+        assertFalse(fields.isEmpty());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleApplication")).findAny().isPresent());
+
+        fields = new Model().getSaveStateFields(AlexaScope.USER);
+        assertNotNull(fields);
+        assertFalse(fields.isEmpty());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleApplication")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleUser")).findAny().isPresent());
     }
-
-    @Test
-    public void getSaveStateFields1() throws Exception {
-
-    }
-
 }
