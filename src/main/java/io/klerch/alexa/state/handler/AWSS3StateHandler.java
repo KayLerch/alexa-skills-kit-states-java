@@ -109,9 +109,10 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     @Override
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
+        final Optional<TModel> modelSession = super.readModel(modelClass, id);
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
-        final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
+        final TModel model = modelSession.orElse(createModel(modelClass, id));
         // we need to remember if there will be something from S3 to be written to the model
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
@@ -132,9 +133,8 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         else {
             // if there was nothing received from S3 and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
-            return model.hasSessionScopedField() ? Optional.of(model) : Optional.empty();
+            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
         }
-
     }
 
     private boolean fromS3FileContentsToModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateException {

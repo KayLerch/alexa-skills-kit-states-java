@@ -163,7 +163,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateException {
+    public void removeModel(final AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         // removeState user-scoped item
         awsClient.deleteItem(tableName, getUserScopedKeyAttributes(model.getClass(), model.getId()));
@@ -179,15 +179,20 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         return this.readModel(modelClass, null);
     }
 
+    public String getAttributeKeyState() {
+        return this.attributeKeyState;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
+        final Optional<TModel> modelSession = super.readModel(modelClass, id);
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // querying dynamodb in the following lines. only if this is true model will be written back to session
-        final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
+        final TModel model = modelSession.orElse(createModel(modelClass, id));
         // must ensure table is existing in case there are user- or app-scoped field awaiting values from db
         if (model.hasUserScopedField() || model.hasApplicationScopedField()) {
             try {
@@ -215,7 +220,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         } else {
             // if there was nothing received from dynamo and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
-            return model.hasSessionScopedField() ? Optional.of(model) : Optional.empty();
+            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
         }
     }
 
@@ -225,7 +230,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         final GetItemResult awsResult = awsClient.getItem(tableName, key);
         final Map<String, AttributeValue> attributes = awsResult.getItem();
         // if no item found then return false
-        if (attributes == null) return false;
+        if (attributes == null || attributes.isEmpty()) return false;
         // read state as json-string
         final String json = attributes.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS();
         // extract values from json and assign it to model
@@ -269,22 +274,22 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(Class<TModel> modelClass) {
+    <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass) {
         return getUserScopedKeyAttributes(modelClass, null);
     }
 
-    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(Class<TModel> modelClass, String id) {
+    <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         Map<String, AttributeValue> attributes = new HashMap<>();
         attributes.put(pkModel, new AttributeValue(getAttributeKey(modelClass, id)));
         attributes.put(pkUser, new AttributeValue(session.getUser().getUserId()));
         return attributes;
     }
 
-    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(Class<TModel> modelClass) {
+    <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass) {
         return getAppScopedKeyAttributes(modelClass, null);
     }
 
-    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(Class<TModel> modelClass, String id) {
+    <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         Map<String, AttributeValue> attributes = new HashMap<>();
         attributes.put(pkModel, new AttributeValue(getAttributeKey(modelClass, id)));
         attributes.put(pkUser, new AttributeValue(attributeValueApp));

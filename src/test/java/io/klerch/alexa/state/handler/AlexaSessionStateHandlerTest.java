@@ -70,8 +70,10 @@ public class AlexaSessionStateHandlerTest {
         model.sampleApplication = true;
         model.sampleUser = valueU;
 
+        final String key = handler.getAttributeKey(model);
+
         handler.writeModel(model);
-        assertTrue(session.getAttributes().containsKey(model.getClass().getTypeName()));
+        assertTrue(session.getAttributes().containsKey(key));
 
         final Optional<Model> model2 = handler.readModel(Model.class);
         assertTrue(model2.isPresent());
@@ -80,7 +82,7 @@ public class AlexaSessionStateHandlerTest {
         assertEquals(valueU, model2.get().sampleUser);
 
         handler.removeModel(model);
-        assertFalse(session.getAttributes().containsKey(model.getClass().getTypeName()));
+        assertFalse(session.getAttributes().containsKey(key));
     }
 
     @Test
