@@ -178,19 +178,19 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         return fileContents.isEmpty() ? "{}" : fileContents;
     }
 
-    private <TModel extends AlexaStateModel> String getUserScopedFilePath(Class<TModel> modelClass) {
+    private <TModel extends AlexaStateModel> String getUserScopedFilePath(final Class<TModel> modelClass) {
         return getUserScopedFilePath(modelClass, null);
     }
 
-    private <TModel extends AlexaStateModel> String getUserScopedFilePath(Class<TModel> modelClass, String id) {
-        return session.getUser().getUserId() + "/" + getAttributeKey(modelClass, id) + "." + fileExtension;
+    private <TModel extends AlexaStateModel> String getUserScopedFilePath(final Class<TModel> modelClass, final String id) {
+        return session.getUser().getUserId() + "/" + TModel.getAttributeKey(modelClass, id) + "." + fileExtension;
     }
 
-    private <TModel extends AlexaStateModel> String getAppScopedFilePath(Class<TModel> modelClass) {
+    private <TModel extends AlexaStateModel> String getAppScopedFilePath(final Class<TModel> modelClass) {
         return getAppScopedFilePath(modelClass, null);
     }
 
-    private <TModel extends AlexaStateModel> String getAppScopedFilePath(Class<TModel> modelClass, String id) {
-        return folderNameApp + "/" + getAttributeKey(modelClass, id) + "." + fileExtension;
+    private <TModel extends AlexaStateModel> String getAppScopedFilePath(final Class<TModel> modelClass, final String id) {
+        return folderNameApp + "/" + TModel.getAttributeKey(modelClass, id) + "." + fileExtension;
     }
 }

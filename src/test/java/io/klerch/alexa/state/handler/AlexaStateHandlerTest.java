@@ -30,18 +30,8 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
     }
 
     @Test
-    public void getAttributeKey() throws Exception {
-        final Model model = new Model();
-        final String expected = model.getClass().getTypeName();
-        assertEquals(expected, handler.getAttributeKey(model));
-        assertEquals(expected, handler.getAttributeKey(Model.class, ""));
-        assertEquals(expected, handler.getAttributeKey(Model.class, null));
-
-        final String id = "id";
-        final String expected2 = expected + ":" + id;
-        model.setId(id);
-        assertEquals(expected2, handler.getAttributeKey(model));
-        assertEquals(expected2, handler.getAttributeKey(Model.class, id));
+    public void getSession() throws Exception {
+        assertEquals(session, handler.getSession());
     }
 
     @Test
@@ -73,20 +63,27 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
         model.sampleApplication = true;
         model.sampleUser = valueU;
 
-        final String key = handler.getAttributeKey(model);
+        final String key = model.getAttributeKey();
 
         handler.writeModel(model);
         assertTrue(session.getAttributes().containsKey(key));
 
         // clean session attributes to ensure values come from mocked dynamoDB
-        session.getAttributes().clear();
+        // but do not this for session handler as the session itself is the store
+        if (!(handler instanceof AlexaSessionStateHandler))
+            session.getAttributes().clear();
 
         final Optional<Model> model2 = handler.readModel(Model.class);
         assertTrue(model2.isPresent());
         assertNull(model2.get().getId());
-        assertNull(model2.get().sampleString);
         assertEquals(true, model2.get().sampleApplication);
         assertEquals(valueU, model2.get().sampleUser);
+
+        if (handler instanceof AlexaSessionStateHandler)
+            assertEquals(value, model2.get().sampleString);
+        else {
+            assertNull(model2.get().sampleString);
+        }
 
         handler.removeModel(model);
         assertFalse(session.getAttributes().containsKey(key));
@@ -105,20 +102,27 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
         model.sampleApplication = true;
         model.sampleUser = valueU;
 
-        final String key = handler.getAttributeKey(model);
+        final String key = model.getAttributeKey();
 
         handler.writeModel(model);
         assertTrue(session.getAttributes().containsKey(key));
 
-        // clean session attributes to ensure values come from mocked dynamoDB
-        session.getAttributes().clear();
+        // clean session attributes to ensure values come from mocked store
+        // but do not this for session handler as the session itself is the store
+        if (!(handler instanceof AlexaSessionStateHandler))
+            session.getAttributes().clear();
 
         final Optional<Model> model2 = handler.readModel(Model.class, modelId);
         assertTrue(model2.isPresent());
         assertEquals(modelId, model2.get().getId());
-        assertNull(model2.get().sampleString);
         assertEquals(true, model2.get().sampleApplication);
         assertEquals(valueU, model2.get().sampleUser);
+
+        if (handler instanceof AlexaSessionStateHandler)
+            assertEquals(value, model2.get().sampleString);
+        else {
+            assertNull(model2.get().sampleString);
+        }
 
         handler.removeModel(model);
         assertFalse(session.getAttributes().containsKey(key));

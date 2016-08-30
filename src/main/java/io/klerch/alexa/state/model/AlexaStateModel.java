@@ -43,6 +43,41 @@ public abstract class AlexaStateModel {
     private Boolean hasApplicationScopedFields;
     @AlexaStateIgnore
     private Boolean hasUserScopedFields;
+    @AlexaStateIgnore
+    private static final String AttributeKeySeparator = ":";
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method doesn't take an id
+     * thus will return the key for the singleton object of the model.
+     * @param modelClass The type of an AlexaStateModel.
+     * @param <TModel> The model type derived from AlexaStateModel.
+     * @return key used to save the model in the session attributes
+     */
+    public static <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
+        return getAttributeKey(modelClass, null);
+    }
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method takes an id
+     * thus will return the key for a specific instance of the model as many of them can exist in your session.
+     * @param modelClass The type of an AlexaStateModel.
+     * @param id the key for a specific instance of the model
+     * @param <TModel> The model type derived from AlexaStateModel.
+     * @return key used to save the model in the session attributes
+     */
+    public static <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id) {
+        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? AttributeKeySeparator + id : "");
+    }
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method obtains an id from this model
+     * thus will return the key for a specific instance of the model as many of them can exist in your session. If this
+     * model does not provide an id it will return the key for the singleton object of the model.
+     * @return key used to save the model in the session attributes
+     */
+    public String getAttributeKey() {
+        return getAttributeKey(this.getClass(), __internalId);
+    }
 
     /**
      * Sets an id for this model instance. The id should be an unique identifier within a model-type within an AlexaScope.

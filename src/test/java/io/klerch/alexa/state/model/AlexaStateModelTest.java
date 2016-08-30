@@ -77,9 +77,9 @@ public class AlexaStateModelTest {
         final Model model = new Model();
         final AlexaSessionStateHandler handler = new AlexaSessionStateHandler(session);
         model.withHandler(handler).saveState();
-        Assert.assertNotNull(session.getAttribute(handler.getAttributeKey(model)));
+        Assert.assertNotNull(session.getAttribute(model.getAttributeKey()));
         model.removeState();
-        Assert.assertNull(session.getAttribute(handler.getAttributeKey(model)));
+        Assert.assertNull(session.getAttribute(model.getAttributeKey()));
     }
 
     @Test (expected = NullPointerException.class)

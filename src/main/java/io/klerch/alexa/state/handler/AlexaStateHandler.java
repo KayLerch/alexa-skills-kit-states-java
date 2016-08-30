@@ -28,34 +28,6 @@ public interface AlexaStateHandler {
     Session getSession();
 
     /**
-     * Returns the key used to save the model in the session attributes. This method doesn't take an id
-     * thus will return the key for the singleton object of the model.
-     * @param modelClass The type of an AlexaStateModel.
-     * @param <TModel> The model type derived from AlexaStateModel.
-     * @return key used to save the model in the session attributes
-     */
-    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass);
-
-    /**
-     * Returns the key used to save the model in the session attributes. This method takes an id
-     * thus will return the key for a specific instance of the model as many of them can exist in your session.
-     * @param modelClass The type of an AlexaStateModel.
-     * @param id the key for a specific instance of the model
-     * @param <TModel> The model type derived from AlexaStateModel.
-     * @return key used to save the model in the session attributes
-     */
-    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id);
-
-    /**
-     * Returns the key used to save the model in the session attributes. This method obtains an id from the given model
-     * thus will return the key for a specific instance of the model as many of them can exist in your session. If given
-     * model does not provide an id it will return the key for the singleton object of the model.
-     * @param model the model to save in the session
-     * @return key used to save the model in the session attributes
-     */
-    String getAttributeKey(AlexaStateModel model);
-
-    /**
      * Creates an instance of your model class and binds it to this handler.
      * Thus you can manage state directly on or in your model without referencing the handler anymore (e.g. {@link AlexaStateModel#saveState()} or {@link AlexaStateModel#removeState()})
      * This really much does the same as what you can achieve with {@link AlexaStateModelFactory#createModel(Class, AlexaStateHandler)}.

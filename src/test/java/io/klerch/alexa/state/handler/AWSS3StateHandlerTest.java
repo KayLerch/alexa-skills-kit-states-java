@@ -1,14 +1,9 @@
 package io.klerch.alexa.state.handler;
 
-import com.amazon.speech.speechlet.Application;
-import com.amazon.speech.speechlet.Session;
-import com.amazon.speech.speechlet.User;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.amazonaws.services.s3.model.S3Object;
-import io.klerch.alexa.state.model.Model;
-import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;

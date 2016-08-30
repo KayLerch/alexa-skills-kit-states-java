@@ -22,7 +22,6 @@ import java.util.Optional;
  */
 public class AlexaSessionStateHandler implements AlexaStateHandler {
     final Session session;
-    private final String typeWithIdSeparator = ":";
 
     /**
      * Initializes a handler and applies an Alexa Session to persist models.
@@ -38,31 +37,6 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     public Session getSession() {
         return this.session;
-    }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
-        return getAttributeKey(modelClass, null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id) {
-        return modelClass.getTypeName() + (id != null && !id.isEmpty() ? typeWithIdSeparator + id : "");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getAttributeKey(final AlexaStateModel model) {
-        return getAttributeKey(model.getClass(), model.getId());
     }
 
     /**
@@ -90,8 +64,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     public void writeModel(AlexaStateModel model) throws AlexaStateException {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
-        final String attributeKey = getAttributeKey(model);
-        session.setAttribute(attributeKey, model.toMap(AlexaScope.SESSION));
+        session.setAttribute(model.getAttributeKey(), model.toMap(AlexaScope.SESSION));
     }
 
     /**
@@ -99,8 +72,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void removeModel(AlexaStateModel model) throws AlexaStateException {
-        final String attributeKey = getAttributeKey(model);
-        session.removeAttribute(attributeKey);
+        session.removeAttribute(model.getAttributeKey());
     }
 
     /**
@@ -117,8 +89,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     @SuppressWarnings("unchecked")
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass, String id) throws AlexaStateException {
-        final String attributeKey = getAttributeKey(modelClass, id);
-        final Object o = session.getAttribute(attributeKey);
+        final Object o = session.getAttribute(TModel.getAttributeKey(modelClass, id));
         if (o == null) return Optional.empty();
 
         if (o instanceof Map<?, ?>) {

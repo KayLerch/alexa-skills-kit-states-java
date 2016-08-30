@@ -298,7 +298,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
 
     <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         Map<String, AttributeValue> attributes = new HashMap<>();
-        attributes.put(pkModel, new AttributeValue(getAttributeKey(modelClass, id)));
+        attributes.put(pkModel, new AttributeValue(TModel.getAttributeKey(modelClass, id)));
         attributes.put(pkUser, new AttributeValue(session.getUser().getUserId()));
         return attributes;
     }
@@ -309,7 +309,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
 
     <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         Map<String, AttributeValue> attributes = new HashMap<>();
-        attributes.put(pkModel, new AttributeValue(getAttributeKey(modelClass, id)));
+        attributes.put(pkModel, new AttributeValue(TModel.getAttributeKey(modelClass, id)));
         attributes.put(pkUser, new AttributeValue(attributeValueApp));
         return attributes;
     }

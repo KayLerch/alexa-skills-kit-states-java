@@ -1,22 +1,16 @@
 package io.klerch.alexa.state.handler;
 
-import com.amazon.speech.speechlet.Application;
-import com.amazon.speech.speechlet.Session;
-import com.amazon.speech.speechlet.User;
 import com.amazonaws.services.iot.AWSIot;
 import com.amazonaws.services.iot.AWSIotClient;
-import com.amazonaws.services.iot.model.CreateThingRequest;
 import com.amazonaws.services.iot.model.CreateThingResult;
 import com.amazonaws.services.iot.model.ListThingsResult;
-import com.amazonaws.services.iot.model.ThingAttribute;
 import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
-import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowResult;
 import io.klerch.alexa.state.model.AlexaScope;
+import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.Model;
-import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -24,9 +18,6 @@ import org.mockito.stubbing.Answer;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 import static org.junit.Assert.*;
 
@@ -53,8 +44,8 @@ public class AWSIotStateHandlerTest extends AlexaStateHandlerTest<AWSIotStateHan
                     // build shadow JSON with reported state for Model with one
                     // instance having an id and another having no id
                     final AWSIotStateHandler handler = new AWSIotStateHandler(session);
-                    final String keyWithId = handler.getAttributeKey(Model.class, modelId);
-                    final String keyWithoutId = handler.getAttributeKey(Model.class, null);
+                    final String keyWithId = AlexaStateModel.getAttributeKey(Model.class, modelId);
+                    final String keyWithoutId = AlexaStateModel.getAttributeKey(Model.class, null);
                     final String jsonWithId = "\"" + keyWithId + "\":{\"id\":\"" + modelId + "\",\"sampleApplication\":true,\"sampleUser\":\"sampleUser\"}";
                     final String jsonWithoutId = "\"" + keyWithoutId + "\":{\"id\":null,\"sampleApplication\":true,\"sampleUser\":\"sampleUser\"}";
                     final String jsonShadow = "{\"state\":{\"reported\":{" + jsonWithId + ", " + jsonWithoutId + "}}}";

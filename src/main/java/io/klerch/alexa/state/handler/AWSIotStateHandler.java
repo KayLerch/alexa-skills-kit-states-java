@@ -98,7 +98,6 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     @Override
     public void removeModel(final AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
-        final String nodeName = getAttributeKey(model);
 
         if (model.hasSessionScopedField() || model.hasUserScopedField()) {
             removeModelFromShadow(model, AlexaScope.USER);
@@ -179,7 +178,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     }
 
     private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
-        final String nodeName = getAttributeKey(model);
+        final String nodeName = model.getAttributeKey();
         final String thingName = getThingName(scope);
         final String thingState = getState(scope);
         try {
@@ -202,7 +201,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // read from item with scoped model
         final String thingName = getThingName(scope);
         final String thingState = getState(scope);
-        final String nodeName = getAttributeKey(model);
+        final String nodeName = model.getAttributeKey();
         try {
             final ObjectMapper mapper = new ObjectMapper();
             final JsonNode node = mapper.readTree(thingState).path("state").path("reported").path(nodeName);
@@ -271,7 +270,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     private void publishState(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         final String thingName = getThingName(scope);
         createThingIfNotExisting(scope);
-        final String payload = "{\"state\":{\"desired\":{\"" + getAttributeKey(model) + "\":" + model.toJSON(scope) + "}}}";
+        final String payload = "{\"state\":{\"desired\":{\"" + model.getAttributeKey() + "\":" + model.toJSON(scope) + "}}}";
         publishState(thingName, payload);
     }
 
