@@ -213,6 +213,12 @@ new AlexaSessionStateHandler(session).writeModel(bob);
 ```
 Next time you can read out _bob_ with _AlexaSessionStateHandler_ and not with
 the handler of DynamoDB or S3.
+```java
+AlexaStateHandler sh = new AlexaSessionStateHandler(session);
+AlexaStateHandler dyh = new AWSDynamoStateHandler(session);
+
+final User bob = sh.readModel(User.class, "bob").orElse(dyh.readModel(User.class, "bob").orElse(dyh.createModel(User.class, "bob")));
+```
 
 ## 6) Remove state of your model
 Of course you can delete the state of your model. Let's keep it short as I
