@@ -33,45 +33,35 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     }
 
     /**
-     * Returns the key used to save the model in the session attributes. This method doesn't take an id
-     * thus will return the key for the singleton object of the model.
-     * @param modelClass The type of an AlexaStateModel.
-     * @param <TModel> The model type derived from AlexaStateModel.
-     * @return key used to save the model in the session attributes
+     * {@inheritDoc}
      */
-    private <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
-        return getAttributeKey(modelClass, null);
-    }
-
-    /**
-     * Returns the Alexa Session object which was given to this handler. This is where state of
-     * all models are written to and read from.
-     * @return Alexa Session object
-     */
+    @Override
     public Session getSession() {
         return this.session;
     }
 
+
     /**
-     * Returns the key used to save the model in the session attributes. This method takes an id
-     * thus will return the key for a specific instance of the model as many of them can exist in your session.
-     * @param modelClass The type of an AlexaStateModel.
-     * @param id the key for a specific instance of the model
-     * @param <TModel> The model type derived from AlexaStateModel.
-     * @return key used to save the model in the session attributes
+     * {@inheritDoc}
      */
-    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, String id) {
+    @Override
+    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass) {
+        return getAttributeKey(modelClass, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id) {
         return modelClass.getTypeName() + (id != null && !id.isEmpty() ? typeWithIdSeparator + id : "");
     }
 
     /**
-     * Returns the key used to save the model in the session attributes. This method obtains an id from the given model
-     * thus will return the key for a specific instance of the model as many of them can exist in your session. If given
-     * model does not provide an id it will return the key for the singleton object of the model.
-     * @param model the model to save in the session
-     * @return key used to save the model in the session attributes
+     * {@inheritDoc}
      */
-    public String getAttributeKey(AlexaStateModel model) {
+    @Override
+    public String getAttributeKey(final AlexaStateModel model) {
         return getAttributeKey(model.getClass(), model.getId());
     }
 

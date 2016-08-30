@@ -96,7 +96,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateException {
+    public void removeModel(final AlexaStateModel model) throws AlexaStateException {
         super.removeModel(model);
         final String nodeName = getAttributeKey(model);
 
@@ -114,9 +114,10 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     @Override
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         // if there is nothing for this model in the session ...
+        final Optional<TModel> modelSession = super.readModel(modelClass, id);
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // reading file from the bucket in the following lines. only if this is true model will be written back to session
-        final TModel model = super.readModel(modelClass, id).orElse(createModel(modelClass, id));
+        final TModel model = modelSession.orElse(createModel(modelClass, id));
         // we need to remember if there will be something from thing shadow to be written to the model
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
@@ -137,7 +138,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         else {
             // if there was nothing received from IOT and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
-            return model.hasSessionScopedField() ? Optional.of(model) : Optional.empty();
+            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
         }
     }
 
@@ -149,7 +150,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * @return Name of the thing for this scope
      * @throws AlexaStateException Any error regarding thing name generation
      */
-    public String getThingName(AlexaScope scope) throws AlexaStateException {
+    public String getThingName(final AlexaScope scope) throws AlexaStateException {
         return AlexaScope.APPLICATION.includes(scope) ? getAppScopedThingName() : getUserScopedThingName();
     }
 
@@ -215,7 +216,13 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         return false;
     }
 
-    private String getUserScopedThingName() throws AlexaStateException {
+    /**
+     * Returns the name of the thing which is used to store model state scoped
+     * as USER
+     * @return Thing name for user-wide model state
+     * @throws AlexaStateException some exceptions may occure when encrypting the user-id
+     */
+    public String getUserScopedThingName() throws AlexaStateException {
         // user-ids in Alexa are too long for thing names in AWS IOT.
         // use the SHA1-hash of the user-id
         final String userHash;
@@ -227,7 +234,12 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         return getAppScopedThingName() + "-" + userHash;
     }
 
-    private String getAppScopedThingName() {
+    /**
+     * Returns the name of the thing which is used to store model state scoped
+     * as APPLICATION
+     * @return Thing name for application-wide model state
+     */
+    public String getAppScopedThingName() {
         // thing names do not allow dots in it
         return session.getApplication().getApplicationId().replace(".", "-");
     }
@@ -251,7 +263,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // if a thing does not have a shadow this is a usual exception
         catch (com.amazonaws.services.iotdata.model.ResourceNotFoundException e) {
             // we are fine with a thing having no shadow what just means there's nothing to read out for the model
-            // return an empty JSON to indicate nothing in the thing shadow
+            // return an empty JSON to indicate nothing is in the thing shadow
             return "{}";
         }
     }
@@ -297,7 +309,8 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // query by an attribute having the name of the thing
         // unfortunately you can only query for things with their attributes, not directly with their names
         final ListThingsRequest request = new ListThingsRequest().withAttributeName(thingAttributeName).withAttributeValue(thingName).withMaxResults(1);
-        if(!awsClient.listThings(request).getThings().isEmpty()) {
+        final ListThingsResult result = awsClient.listThings(request);
+        if(result != null && result.getThings() != null && result.getThings().isEmpty()) {
             thingsExisting.add(thingName);
             return true;
         }

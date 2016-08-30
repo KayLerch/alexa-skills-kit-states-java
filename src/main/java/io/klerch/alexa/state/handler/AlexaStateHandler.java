@@ -6,6 +6,7 @@
  */
 package io.klerch.alexa.state.handler;
 
+import com.amazon.speech.speechlet.Session;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModelFactory;
 import io.klerch.alexa.state.model.AlexaStateSave;
@@ -19,6 +20,40 @@ import java.util.Optional;
  * It comes in multiple flavours where each of the implementation is dedicated to a persistence store.
  */
 public interface AlexaStateHandler {
+    /**
+     * Returns the Alexa Session object which was given to this handler. This is where state of
+     * all models are written to and read from.
+     * @return Alexa Session object
+     */
+    Session getSession();
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method doesn't take an id
+     * thus will return the key for the singleton object of the model.
+     * @param modelClass The type of an AlexaStateModel.
+     * @param <TModel> The model type derived from AlexaStateModel.
+     * @return key used to save the model in the session attributes
+     */
+    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass);
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method takes an id
+     * thus will return the key for a specific instance of the model as many of them can exist in your session.
+     * @param modelClass The type of an AlexaStateModel.
+     * @param id the key for a specific instance of the model
+     * @param <TModel> The model type derived from AlexaStateModel.
+     * @return key used to save the model in the session attributes
+     */
+    <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id);
+
+    /**
+     * Returns the key used to save the model in the session attributes. This method obtains an id from the given model
+     * thus will return the key for a specific instance of the model as many of them can exist in your session. If given
+     * model does not provide an id it will return the key for the singleton object of the model.
+     * @param model the model to save in the session
+     * @return key used to save the model in the session attributes
+     */
+    String getAttributeKey(AlexaStateModel model);
 
     /**
      * Creates an instance of your model class and binds it to this handler.
