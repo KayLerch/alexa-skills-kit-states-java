@@ -8,6 +8,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import io.klerch.alexa.state.model.Model;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -136,6 +137,7 @@ public class AWSDynamoStateHandlerTest {
         assertFalse(session.getAttributes().containsKey(key));
     }
 
+    @Ignore
     @Test
     public void crudModelWithId() throws Exception {
         session.getAttributes().clear();
