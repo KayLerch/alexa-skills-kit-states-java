@@ -49,6 +49,15 @@
                     <outputDirectory>docs</outputDirectory>
                     <reportOutputDirectory>docs</reportOutputDirectory>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>generate-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>javadoc</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

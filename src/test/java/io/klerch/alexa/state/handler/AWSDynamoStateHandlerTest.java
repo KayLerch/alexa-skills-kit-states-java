@@ -3,7 +3,6 @@ package io.klerch.alexa.state.handler;
 import com.amazon.speech.speechlet.Application;
 import com.amazon.speech.speechlet.Session;
 import com.amazon.speech.speechlet.User;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
