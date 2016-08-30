@@ -152,7 +152,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * @return Name of the thing for this scope
      * @throws AlexaStateException Any error regarding thing name generation
      */
-    public String getThingName(final AlexaScope scope) throws AlexaStateException {
+    String getThingName(final AlexaScope scope) throws AlexaStateException {
         return AlexaScope.APPLICATION.includes(scope) ? getAppScopedThingName() : getUserScopedThingName();
     }
 
@@ -162,7 +162,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * @param scope The scope this thing is dedicated to
      * @throws AlexaStateException Any error regarding thing creation or existence check
      */
-    public void createThingIfNotExisting(final AlexaScope scope) throws AlexaStateException {
+    private void createThingIfNotExisting(final AlexaScope scope) throws AlexaStateException {
         final String thingName = getThingName(scope);
         if (!doesThingExist(thingName)) {
             createThing(thingName, scope);
