@@ -7,6 +7,7 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.S3Object;
 import io.klerch.alexa.state.utils.AlexaStateException;
@@ -27,7 +28,7 @@ import java.util.Optional;
  */
 public class AWSS3StateHandler extends AlexaSessionStateHandler {
 
-    private final AmazonS3Client awsClient;
+    private final AmazonS3 awsClient;
     private final String bucketName;
     private final String folderNameApp = "__application";
     private final String fileExtension = "json";
@@ -50,10 +51,27 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * @param awsClient An AWS client capable of getting and putting objects to the given bucket.
      * @param bucketName The bucket where all saved states will go into.
      */
-    public AWSS3StateHandler(final Session session, final AmazonS3Client awsClient, final String bucketName) {
+    public AWSS3StateHandler(final Session session, final AmazonS3 awsClient, final String bucketName) {
         super(session);
         this.awsClient = awsClient;
         this.bucketName = bucketName;
+    }
+
+    /**
+     * Returns the AWS connection client used to write to and read from files in S3 bucket.
+     * @return AWS connection client to S3
+     */
+    public AmazonS3 getAwsClient() {
+        return this.awsClient;
+    }
+
+    /**
+     * Returns the name of the S3 bucket which is used by this handler to store JSON files with
+     * model states.
+     * @return Name of the S3 bucket
+     */
+    public String getBucketName() {
+        return this.bucketName;
     }
 
     /**

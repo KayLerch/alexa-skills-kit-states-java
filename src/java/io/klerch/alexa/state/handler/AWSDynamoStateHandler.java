@@ -7,6 +7,7 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
@@ -24,7 +25,7 @@ import java.util.*;
  */
 public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
 
-    private final AmazonDynamoDBClient awsClient;
+    private final AmazonDynamoDB awsClient;
     private final String tableName;
     private final long readCapacityUnits;
     private final long writeCapacityUnits;
@@ -60,7 +61,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * @param session The Alexa session of your current skill invocation.
      * @param awsClient An AWS client capable of creating DynamoDB table plus reading, writing and removing items.
      */
-    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient) {
         this(session, awsClient, null, 10L, 5L);
     }
 
@@ -89,7 +90,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * @param awsClient An AWS client capable of reading, writing and removing items of the given DynamoDB table.
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
-    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient, final String tableName) {
         this(session, awsClient, tableName, 10L, 5L);
     }
 
@@ -106,11 +107,11 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * @param readCapacityUnits Read capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      * @param writeCapacityUnits Write capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      */
-    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final long readCapacityUnits, final long writeCapacityUnits) {
+    public AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient, final long readCapacityUnits, final long writeCapacityUnits) {
         this(session, awsClient, null, readCapacityUnits, writeCapacityUnits);
     }
 
-    private AWSDynamoStateHandler(final Session session, final AmazonDynamoDBClient awsClient, final String tableName, final long readCapacityUnits, final long writeCapacityUnits) {
+    private AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient, final String tableName, final long readCapacityUnits, final long writeCapacityUnits) {
         super(session);
         this.awsClient = awsClient;
         // assume table exists if table name provided.
@@ -118,6 +119,23 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         this.tableName = tableName != null ? tableName : tablePrefix + session.getApplication().getApplicationId();
         this.readCapacityUnits = readCapacityUnits;
         this.writeCapacityUnits = writeCapacityUnits;
+    }
+
+    /**
+     * Returns the AWS connection client used to write to and read from items in DynamoDB table.
+     * @return AWS connection client to DynamoDB
+     */
+    public AmazonDynamoDB getAwsClient() {
+        return this.awsClient;
+    }
+
+    /**
+     * Returns the name of the DynamoDB table which is used by this handler to store items with
+     * model states.
+     * @return name of the DynamoDB table
+     */
+    public String getTableName() {
+        return this.tableName;
     }
 
     /**

@@ -44,6 +44,15 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     }
 
     /**
+     * Returns the Alexa Session object which was given to this handler. This is where state of
+     * all models are written to and read from.
+     * @return Alexa Session object
+     */
+    public Session getSession() {
+        return this.session;
+    }
+
+    /**
      * Returns the key used to save the model in the session attributes. This method takes an id
      * thus will return the key for a specific instance of the model as many of them can exist in your session.
      * @param modelClass The type of an AlexaStateModel.

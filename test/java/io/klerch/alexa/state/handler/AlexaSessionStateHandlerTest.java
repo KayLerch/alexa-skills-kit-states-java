@@ -25,6 +25,12 @@ public class AlexaSessionStateHandlerTest {
     }
 
     @Test
+    public void getSession() throws Exception {
+        final AlexaSessionStateHandler handler = new AlexaSessionStateHandler(session);
+        assertEquals(session, handler.getSession());
+    }
+
+    @Test
     public void getAttributeKey() throws Exception {
         final Model model = new Model();
         final String expected = model.getClass().getTypeName();

@@ -3,6 +3,7 @@ package io.klerch.alexa.state.handler;
 import com.amazon.speech.speechlet.Application;
 import com.amazon.speech.speechlet.Session;
 import com.amazon.speech.speechlet.User;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
@@ -71,6 +72,37 @@ public class AWSDynamoStateHandlerTest {
                 .thenReturn(resultUserId);
         Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class, modelId)))
                 .thenReturn(resultAppId);
+    }
+
+    @Test
+    public void getAwsClient() throws Exception {
+        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session);
+        assertNotNull(handler.getAwsClient());
+
+        final AmazonDynamoDBClient awsClient = new AmazonDynamoDBClient();
+        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, awsClient);
+        assertEquals(awsClient, handler2.getAwsClient());
+    }
+
+    @Test
+    public void getTableName() throws Exception {
+        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session);
+        assertNotNull(handler.getTableName());
+
+        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, "tableName");
+        assertEquals("tableName", handler2.getTableName());
+    }
+
+    @Test
+    public void getAwsClientAndTableName() throws Exception {
+        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session);
+        assertNotNull(handler.getTableName());
+        assertNotNull(handler.getAwsClient());
+
+        final AmazonDynamoDBClient awsClient = new AmazonDynamoDBClient();
+        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, awsClient, "tableName");
+        assertEquals(awsClient, handler2.getAwsClient());
+        assertEquals("tableName", handler2.getTableName());
     }
 
     @Test

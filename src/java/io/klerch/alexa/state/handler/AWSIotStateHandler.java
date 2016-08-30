@@ -7,8 +7,10 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
+import com.amazonaws.services.iot.AWSIot;
 import com.amazonaws.services.iot.AWSIotClient;
 import com.amazonaws.services.iot.model.*;
+import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
 import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
@@ -31,8 +33,8 @@ import java.util.Optional;
 
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
-    private final AWSIotClient awsClient;
-    private final AWSIotDataClient awsDataClient;
+    private final AWSIot awsClient;
+    private final AWSIotData awsDataClient;
     private final String thingAttributeName = "name";
     private final String thingAttributeUser = "amzn-user-id";
     private final String thingAttributeApp = "amzn-app-id";
@@ -42,10 +44,28 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         this(session, new AWSIotClient(), new AWSIotDataClient());
     }
 
-    public AWSIotStateHandler(final Session session, final AWSIotClient awsClient, final AWSIotDataClient awsDataClient) {
+    public AWSIotStateHandler(final Session session, final AWSIot awsClient, final AWSIotData awsDataClient) {
         super(session);
         this.awsClient = awsClient;
         this.awsDataClient = awsDataClient;
+    }
+
+    /**
+     * Returns the AWS connection client used by this handler to manage resources
+     * in AWS IoT.
+     * @return AWS connection client for AWS IoT
+     */
+    public AWSIot getAwsClient() {
+        return this.awsClient;
+    }
+
+    /**
+     * Returns the AWS connection client used by this handler to store model states in
+     * thing shadows of AWS IoT.
+     * @return AWS data connection client for AWS IoT
+     */
+    public AWSIotData getAwsDataClient() {
+        return this.awsDataClient;
     }
 
     /**
