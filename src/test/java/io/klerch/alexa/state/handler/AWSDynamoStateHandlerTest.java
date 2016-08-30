@@ -60,10 +60,10 @@ public class AWSDynamoStateHandlerTest {
         final String jsonUserId = "{\"id\":\"" + modelId + "\",\"sampleUser\":\"sampleUser\"}";
 
         final Map<String, AttributeValue> mapUserId = new HashMap<>();
-        mapUser.put(handler.getAttributeKeyState(), new AttributeValue(jsonUserId));
+        mapUserId.put(handler.getAttributeKeyState(), new AttributeValue(jsonUserId));
 
         final Map<String, AttributeValue> mapAppId = new HashMap<>();
-        mapApp.put(handler.getAttributeKeyState(), new AttributeValue(jsonAppId));
+        mapAppId.put(handler.getAttributeKeyState(), new AttributeValue(jsonAppId));
 
         final GetItemResult resultUserId = new GetItemResult().withItem(mapUserId);
         final GetItemResult resultAppId = new GetItemResult().withItem(mapAppId);
@@ -137,7 +137,6 @@ public class AWSDynamoStateHandlerTest {
         assertFalse(session.getAttributes().containsKey(key));
     }
 
-    @Ignore
     @Test
     public void crudModelWithId() throws Exception {
         session.getAttributes().clear();
