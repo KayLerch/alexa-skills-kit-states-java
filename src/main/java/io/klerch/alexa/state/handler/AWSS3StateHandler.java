@@ -13,6 +13,7 @@ import com.amazonaws.services.s3.model.S3Object;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
+import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,6 +28,7 @@ import java.util.Optional;
  * then contains files - one for each instance of a saved model.
  */
 public class AWSS3StateHandler extends AlexaSessionStateHandler {
+    private final Logger log = Logger.getLogger(AWSS3StateHandler.class);
 
     private final AmazonS3 awsClient;
     private final String bucketName;
@@ -111,6 +113,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         // removeState app-scoped file
         if (model.hasApplicationScopedField())
             awsClient.deleteObject(bucketName, getAppScopedFilePath(model.getClass(), model.getId()));
+        log.debug(String.format("Removed state from S3 for '%1$s'.", model));
     }
 
     /**
@@ -172,7 +175,9 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
                 sb.append(line);
             }
         } catch (IOException e) {
-            throw AlexaStateException.create("Could not read from S3-file " + filePath).withCause(e).withHandler(this).build();
+            final String error = String.format("Could not read from S3-file '%1$s' from Bucket '%2$s'.", filePath, bucketName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
         }
         final String fileContents = sb.toString();
         return fileContents.isEmpty() ? "{}" : fileContents;

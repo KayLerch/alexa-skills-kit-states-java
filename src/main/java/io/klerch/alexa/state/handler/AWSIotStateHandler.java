@@ -22,6 +22,7 @@ import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.utils.EncryptUtils;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
+    private final Logger log = Logger.getLogger(AWSS3StateHandler.class);
 
     private final AWSIot awsClient;
     private final AWSIotData awsDataClient;
@@ -105,6 +107,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         if (model.hasApplicationScopedField()) {
             removeModelFromShadow(model, AlexaScope.APPLICATION);
         }
+        log.debug(String.format("Removed state from AWS IoT shadow for '%1$s'.", model));
     }
 
     /**
@@ -193,7 +196,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             final String json = mapper.writeValueAsString(root);
             publishState(thingName, json);
         } catch (IOException e) {
-            throw AlexaStateException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
+            final String error = String.format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(model).build();
         }
     }
 
@@ -210,7 +215,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
                 return model.fromJSON(json, scope);
             }
         } catch (IOException e) {
-            throw AlexaStateException.create("Could not extract model state from thing shadow state of " + thingName).withCause(e).withModel(model).build();
+            final String error = String.format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(model).build();
         }
         return false;
     }
@@ -228,7 +235,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         try {
             userHash = EncryptUtils.encryptSha1(session.getUser().getUserId());
         } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-            throw AlexaStateException.create("Could not encrypt user-id for generating the IOT thing-name").withHandler(this).withCause(e).build();
+            final String error = "Could not encrypt user-id for generating the IOT thing-name";
+            log.error(error, e);
+            throw AlexaStateException.create(error).withHandler(this).withCause(e).build();
         }
         return getAppScopedThingName() + "-" + userHash;
     }
@@ -256,11 +265,14 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             try {
                 return (buffer != null && buffer.hasArray()) ? new String(buffer.array(), "UTF-8") : "{}";
             } catch (UnsupportedEncodingException e) {
-                throw AlexaStateException.create("Could not handle received contents of thing-shaodw " + thingName).withCause(e).withHandler(this).build();
+                final String error = String.format("Could not handle received contents of thing-shadow '%1$s'", thingName);
+                log.error(error, e);
+                throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
             }
         }
         // if a thing does not have a shadow this is a usual exception
         catch (com.amazonaws.services.iotdata.model.ResourceNotFoundException e) {
+            log.info(e);
             // we are fine with a thing having no shadow what just means there's nothing to read out for the model
             // return an empty JSON to indicate nothing is in the thing shadow
             return "{}";
@@ -279,7 +291,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         try {
             buffer = ByteBuffer.wrap(json.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
-            throw AlexaStateException.create(e.getMessage()).withCause(e).withHandler(this).build();
+            final String error = String.format("Could not prepare JSON for model state publication to thing shadow '%1$s'", thingName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
         }
         final UpdateThingShadowRequest iotRequest = new UpdateThingShadowRequest().withThingName(thingName).withPayload(buffer);
         awsDataClient.updateThingShadow(iotRequest);
@@ -299,7 +313,6 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // now create the thing
         final CreateThingRequest request = new CreateThingRequest().withThingName(thingName).withAttributePayload(attrPayload);
         awsClient.createThing(request);
-
     }
 
     private boolean doesThingExist(final String thingName) {

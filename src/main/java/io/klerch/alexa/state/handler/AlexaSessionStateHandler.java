@@ -11,6 +11,7 @@ import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.AlexaStateModelFactory;
 import io.klerch.alexa.state.utils.AlexaStateException;
+import org.apache.log4j.Logger;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Optional;
  * This handler reads and writes state for AlexaStateModels and considers all its fields annotated with AlexaSaveState-tags.
  */
 public class AlexaSessionStateHandler implements AlexaStateHandler {
+    private final Logger log = Logger.getLogger(AlexaSessionStateHandler.class);
     final Session session;
 
     /**
@@ -65,6 +67,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
         session.setAttribute(model.getAttributeKey(), model.toMap(AlexaScope.SESSION));
+        log.debug(String.format("Wrote state to session attributes for '%1$s'.", model));
     }
 
     /**
@@ -73,6 +76,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     public void removeModel(AlexaStateModel model) throws AlexaStateException {
         session.removeAttribute(model.getAttributeKey());
+        log.debug(String.format("Removed state from session attributes for '%1$s'.", model));
     }
 
     /**
@@ -90,7 +94,10 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @SuppressWarnings("unchecked")
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass, String id) throws AlexaStateException {
         final Object o = session.getAttribute(TModel.getAttributeKey(modelClass, id));
-        if (o == null) return Optional.empty();
+        if (o == null) {
+            log.info(String.format("Could not find state for '%1$s' in session attributes.", TModel.getAttributeKey(modelClass, id)));
+            return Optional.empty();
+        }
 
         if (o instanceof Map<?, ?>) {
             final Map<?, ?> childAttributes = (Map<?, ?>) o;
@@ -102,18 +109,22 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
                         model.set(field, childAttributes.get(field.getName()));
                     }
                 }
+                log.debug(String.format("Read state for '%1$s' in session attributes.", model));
             }
             return model != null ? Optional.of(model) : Optional.empty();
         }
         else if (o instanceof String) {
             final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
             model.fromJSON((String)o);
+            log.debug(String.format("Read state for '%1$s' in session attributes.", model));
             return Optional.of(model);
         }
         else {
             // if not a map than expect it to be the model
             // this only happens if a model was added to the session before its json-serialization
-            return Optional.of((TModel)o);
+            TModel model = (TModel)o;
+            log.debug(String.format("Read state for '%1$s' in session attributes.", model));
+            return Optional.of(model);
         }
     }
 }

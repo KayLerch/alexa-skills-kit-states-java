@@ -14,6 +14,7 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.AlexaScope;
+import org.apache.log4j.Logger;
 
 import java.util.*;
 
@@ -24,6 +25,7 @@ import java.util.*;
  * session.
  */
 public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
+    private final Logger log = Logger.getLogger(AWSS3StateHandler.class);
 
     private final AmazonDynamoDB awsClient;
     private final String tableName;
@@ -153,7 +155,9 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             try {
                 ensureTableExists();
             } catch (InterruptedException e) {
-                throw AlexaStateException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
+                final String error = String.format("Could not create DynamoDb-Table '%1$s' before writing state for '%2$s'", tableName, model);
+                log.debug(error);
+                throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
             }
         }
 
@@ -187,6 +191,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         awsClient.deleteItem(tableName, getUserScopedKeyAttributes(model.getClass(), model.getId()));
         // removeState app-scoped item
         awsClient.deleteItem(tableName, getAppScopedKeyAttributes(model.getClass(), model.getId()));
+        log.debug(String.format("Removed state from DynamoDB for '%1$s'.", model));
     }
 
     /**
@@ -216,7 +221,9 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             try {
                 ensureTableExists();
             } catch (InterruptedException e) {
-                throw AlexaStateException.create("Could not create DynamoDb-Table.").withCause(e).withHandler(this).build();
+                final String error = String.format("Could not create DynamoDb-Table '%1$s' before writing state for '%2$s'", tableName, model);
+                log.error(error);
+                throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
             }
         }
         // we need to remember if there will be something from dynamodb to be written to the model
@@ -224,10 +231,12 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
         if (model.hasUserScopedField() && fromDbStatetoModel(model, id, AlexaScope.USER)) {
+            log.debug(String.format("Values applied from DynamoDB to user-scoped fields of model '%1$s'.", model));
             modelChanged = true;
         }
         // and if there are app-scoped fields ...
         if (model.hasApplicationScopedField() && fromDbStatetoModel(model, id, AlexaScope.APPLICATION)) {
+            log.debug(String.format("Values applied from DynamoDB to application-scoped fields of model '%1$s'.", model));
             modelChanged = true;
         }
         // so if model changed from within something out of dynamodb we want this to be in the speechlet as well
@@ -236,6 +245,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             super.writeModel(model);
             return Optional.of(model);
         } else {
+            log.debug(String.format("No state for application- or user-scoped fields of model '%1$s' found in DynamoDB.", model));
             // if there was nothing received from dynamo and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
             return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
@@ -283,8 +293,10 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                     .withProvisionedThroughput(new ProvisionedThroughput()
                             .withReadCapacityUnits(readCapacityUnits)
                             .withWriteCapacityUnits(writeCapacityUnits));
+            log.info(String.format("Table '%1$s' will be created in DynamoDB.", tableName));
             // create on not existing table
             if (TableUtils.createTableIfNotExists(awsClient, awsRequest)) {
+                log.info(String.format("Table '%1$s' is created in DynamoDB. Now standing by for up to ten minutes for this table to be in active state.", tableName));
                 // wait for table to be in ACTIVE state in order to proceed with read or write
                 // this could take up to possible ten minutes so be sure to run this code once before publishing your skill ;)
                 TableUtils.waitUntilActive(awsClient, awsRequest.getTableName());
@@ -326,8 +338,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             tableExistenceApproved = TableStatus.ACTIVE.toString().equals(table.getTableStatus());
             return tableExistenceApproved;
         } catch (ResourceNotFoundException e) {
-            // bad luck, no table found
-            e.printStackTrace();
+            final String error = String.format("Could not find table '%1$s'", tableName);
+            log.warn(error);
             return false;
         }
     }

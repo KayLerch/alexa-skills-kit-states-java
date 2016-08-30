@@ -9,6 +9,7 @@ package io.klerch.alexa.state.model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import io.klerch.alexa.state.handler.AWSS3StateHandler;
 import io.klerch.alexa.state.handler.AlexaStateHandler;
 import io.klerch.alexa.state.model.serializer.AlexaAppStateSerializer;
 import io.klerch.alexa.state.model.serializer.AlexaSessionStateSerializer;
@@ -18,6 +19,7 @@ import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.utils.ConversionUtils;
 import io.klerch.alexa.state.utils.ReflectionUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.log4j.Logger;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
  * This abstract class turns your POJO model into a model compatible to the AlexaStateHandler.
  */
 public abstract class AlexaStateModel {
+    @AlexaStateIgnore
+    private final Logger log = Logger.getLogger(AlexaStateModel.class);
     @AlexaStateIgnore
     private String __internalId;
     @AlexaStateIgnore
@@ -176,7 +180,9 @@ public abstract class AlexaStateModel {
             return getter != null ? getter.invoke(this) : field.get(this);
         }
         catch (IllegalAccessException | InvocationTargetException e) {
-            throw AlexaStateException.create("Could not access field " + fieldName + " in model for reading. Ensure there's a public getter in the module.").withCause(e).withModel(this).build();
+            final String error = String.format("Could not access field '%1$s' of model '%2$s' for reading. Ensure there's a public getter for this field.", fieldName, this);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(this).build();
         }
     }
 
@@ -206,7 +212,9 @@ public abstract class AlexaStateModel {
             }
         }
         catch (IllegalAccessException | InvocationTargetException e) {
-            throw AlexaStateException.create("Could not access field " + fieldName + " in model for writing. Ensure there's a public setter in the module.").withCause(e).withModel(this).build();
+            final String error = String.format("Could not access field '%1$s' of model '%2$s' for writing. Ensure there's a public setter for this field.", fieldName, this);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(this).build();
         }
     }
 
@@ -268,7 +276,9 @@ public abstract class AlexaStateModel {
             // serialize model which only contains those fields tagged with the given scope
             return mapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            throw AlexaStateException.create("Error while serializing model as Json.").withCause(e).withModel(this).build();
+            final String error = String.format("Error while serializing model of '%1$s' as Json.", this);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(this).build();
         }
     }
 
@@ -366,6 +376,8 @@ public abstract class AlexaStateModel {
     }
 
     static final class AlexaModelBuilder {
+        private final Logger log = Logger.getLogger(AlexaModelBuilder.class);
+
         private String __internalId;
         private AlexaStateHandler __handler;
         private Class<?> modelClass;
@@ -412,9 +424,14 @@ public abstract class AlexaStateModel {
                 model.setHandler(__handler);
                 return model;
             } catch (InstantiationException | IllegalAccessException e) {
-                e.printStackTrace();
+                log.error(String.format("Could not create model of '%1$s'.", this.modelClass.getTypeName()), e);
                 return null;
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return this.getAttributeKey();
     }
 }

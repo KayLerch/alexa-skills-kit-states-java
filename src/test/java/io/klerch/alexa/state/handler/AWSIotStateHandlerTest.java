@@ -17,6 +17,7 @@ import com.amazonaws.services.iotdata.model.UpdateThingShadowResult;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.Model;
+import org.apache.log4j.Logger;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
