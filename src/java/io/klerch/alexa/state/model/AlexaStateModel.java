@@ -119,7 +119,7 @@ public abstract class AlexaStateModel {
      * @param <T> type of the model.
      * @return builder to use for completing the object creation
      */
-    static <T extends AlexaStateModel> AlexaModelBuilder create(Class<T> modelClass) {
+    static <T extends AlexaStateModel> AlexaModelBuilder create(final Class<T> modelClass) {
         return new AlexaModelBuilder(modelClass);
     }
 
@@ -131,7 +131,7 @@ public abstract class AlexaStateModel {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return Value of the given field.
      */
-    public Object get(Field field) throws AlexaStateException {
+    public Object get(final Field field) throws AlexaStateException {
         final String fieldName = field.getName();
         // prefer getting value from getter over direct read from field
         try {
@@ -154,7 +154,7 @@ public abstract class AlexaStateModel {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if value was set successfully.
      */
-    public Boolean set(Field field, Object value) throws AlexaStateException {
+    public Boolean set(final Field field, final Object value) throws AlexaStateException {
         final String fieldName = field.getName();
         // prefer setting value with setter over direct value assignment to field
         try {
@@ -183,7 +183,7 @@ public abstract class AlexaStateModel {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields.
      */
-    public boolean fromJSON(String json) throws AlexaStateException {
+    public boolean fromJSON(final String json) throws AlexaStateException {
         // by default take over everything from json to fields that map in this model
         // session-scope covers it all
         return fromJSON(json, AlexaScope.SESSION);
@@ -198,7 +198,7 @@ public abstract class AlexaStateModel {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return True, if json-keys matched with AlexaStateSave-tagged fields with given scope.
      */
-    public boolean fromJSON(String json, AlexaScope scope) throws AlexaStateException {
+    public boolean fromJSON(final String json, final AlexaScope scope) throws AlexaStateException {
         Boolean modelChanged = false;
         final Map<String, Object> attributes = ConversionUtils.mapJson(json);
         // go through all fields tagged as savestate and is within a scope
@@ -244,7 +244,7 @@ public abstract class AlexaStateModel {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return A map with key-value-pairs - one for each AlexaStateSave-annotated field in this model configured to be valid
      */
-    public Map<String, Object> toMap(AlexaScope scope) throws AlexaStateException {
+    public Map<String, Object> toMap(final AlexaScope scope) throws AlexaStateException {
         // for each scope there is a custom json serializer so initialize the one which corresponds to the given scope
         return ConversionUtils.mapJson(toJSON(scope));
     }
@@ -294,7 +294,7 @@ public abstract class AlexaStateModel {
      * @return list of all the fields of this model which are annotated with AlexaStateSave and whose scope is set to a scope
      * which at least in included in the given scope.
      */
-    public List<Field> getSaveStateFields(AlexaScope scope) {
+    public List<Field> getSaveStateFields(final AlexaScope scope) {
         return Arrays.stream(this.getClass().getDeclaredFields()).filter(field -> isStateSave(field, scope)).collect(Collectors.toList());
     }
 
@@ -303,7 +303,7 @@ public abstract class AlexaStateModel {
      * @param field the field you want to check for the AlexaStateSave-annotation
      * @return True, if the given field has the AlexaStateSave-annotation
      */
-    private boolean isStateSave(Field field) {
+    private boolean isStateSave(final Field field) {
         // either field itself is annotated as statesave or whole class is
         // however, StateIgnore prevends field of being statesave
         return !field.isAnnotationPresent(AlexaStateIgnore.class) &&
@@ -318,7 +318,7 @@ public abstract class AlexaStateModel {
      * @param scope the scope which at least must be included in the scope of the field
      * @return True, if the field has the AlexaStateSave-annotation and given scope (or an included scope)
      */
-    private boolean isStateSave(Field field, AlexaScope scope) {
+    private boolean isStateSave(final Field field, final AlexaScope scope) {
         // either field itself is annotated as statesave in given scope or whole class is statesave in the given scope
         // however, StateIgnore in given scope prevends field of being statesave
         return ((!field.isAnnotationPresent(AlexaStateIgnore.class)) &&
