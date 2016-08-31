@@ -102,13 +102,23 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         if (o instanceof Map<?, ?>) {
             final Map<?, ?> childAttributes = (Map<?, ?>) o;
             final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
+
             if (model != null) {
-                for (final Field field : model.getSaveStateFields(AlexaScope.SESSION)) {
+                model.getSaveStateFields(AlexaScope.SESSION).parallelStream()
+                        .filter(field -> childAttributes.containsKey(field.getName()))
+                        .forEach(field -> {
+                            try {
+                                model.set(field, childAttributes.get(field.getName()));
+                            } catch (AlexaStateException e) {
+                                log.error(String.format("Could not set value for '%1$s' of model '%2$s'", field.getName(), model), e);
+                            }
+                        });
+                /*for (final Field field : model.getSaveStateFields(AlexaScope.SESSION)) {
                     final String fieldName = field.getName();
                     if (childAttributes.containsKey(fieldName)) {
                         model.set(field, childAttributes.get(field.getName()));
                     }
-                }
+                }*/
                 log.debug(String.format("Read state for '%1$s' in session attributes.", model));
             }
             return model != null ? Optional.of(model) : Optional.empty();
