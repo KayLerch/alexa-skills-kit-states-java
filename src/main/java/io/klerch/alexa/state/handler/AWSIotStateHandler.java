@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
-    private final Logger log = Logger.getLogger(AWSS3StateHandler.class);
+    private final Logger log = Logger.getLogger(AWSIotStateHandler.class);
 
     private final AWSIot awsClient;
     private final AWSIotData awsDataClient;

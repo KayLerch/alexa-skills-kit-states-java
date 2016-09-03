@@ -25,7 +25,7 @@ import java.util.*;
  * session.
  */
 public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
-    private final Logger log = Logger.getLogger(AWSS3StateHandler.class);
+    private final Logger log = Logger.getLogger(AWSDynamoStateHandler.class);
 
     private final AmazonDynamoDB awsClient;
     private final String tableName;
@@ -293,7 +293,6 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                     .withProvisionedThroughput(new ProvisionedThroughput()
                             .withReadCapacityUnits(readCapacityUnits)
                             .withWriteCapacityUnits(writeCapacityUnits));
-            log.info(String.format("Table '%1$s' will be created in DynamoDB.", tableName));
             // create on not existing table
             if (TableUtils.createTableIfNotExists(awsClient, awsRequest)) {
                 log.info(String.format("Table '%1$s' is created in DynamoDB. Now standing by for up to ten minutes for this table to be in active state.", tableName));
