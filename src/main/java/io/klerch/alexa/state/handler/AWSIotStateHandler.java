@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static java.lang.String.format;
+
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
     private final Logger log = Logger.getLogger(AWSIotStateHandler.class);
 
@@ -107,7 +109,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         if (model.hasApplicationScopedField()) {
             removeModelFromShadow(model, AlexaScope.APPLICATION);
         }
-        log.debug(String.format("Removed state from AWS IoT shadow for '%1$s'.", model));
+        log.debug(format("Removed state from AWS IoT shadow for '%1$s'.", model));
     }
 
     /**
@@ -196,7 +198,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             final String json = mapper.writeValueAsString(root);
             publishState(thingName, json);
         } catch (IOException e) {
-            final String error = String.format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
+            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
             log.error(error, e);
             throw AlexaStateException.create(error).withCause(e).withModel(model).build();
         }
@@ -215,7 +217,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
                 return model.fromJSON(json, scope);
             }
         } catch (IOException e) {
-            final String error = String.format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
+            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
             log.error(error, e);
             throw AlexaStateException.create(error).withCause(e).withModel(model).build();
         }
@@ -265,7 +267,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             try {
                 return (buffer != null && buffer.hasArray()) ? new String(buffer.array(), "UTF-8") : "{}";
             } catch (UnsupportedEncodingException e) {
-                final String error = String.format("Could not handle received contents of thing-shadow '%1$s'", thingName);
+                final String error = format("Could not handle received contents of thing-shadow '%1$s'", thingName);
                 log.error(error, e);
                 throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
             }
@@ -284,6 +286,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         createThingIfNotExisting(scope);
         final String payload = "{\"state\":{\"desired\":{\"" + model.getAttributeKey() + "\":" + model.toJSON(scope) + "}}}";
         publishState(thingName, payload);
+        log.info(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
     }
 
     private void publishState(final String thingName, final String json) throws AlexaStateException {
@@ -291,7 +294,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         try {
             buffer = ByteBuffer.wrap(json.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
-            final String error = String.format("Could not prepare JSON for model state publication to thing shadow '%1$s'", thingName);
+            final String error = format("Could not prepare JSON for model state publication to thing shadow '%1$s'", thingName);
             log.error(error, e);
             throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
         }
@@ -313,6 +316,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // now create the thing
         final CreateThingRequest request = new CreateThingRequest().withThingName(thingName).withAttributePayload(attrPayload);
         awsClient.createThing(request);
+        log.info(format("Thing '%1$s' is created in AWS IoT.", thingName));
     }
 
     private boolean doesThingExist(final String thingName) {

@@ -14,10 +14,10 @@ import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowResult;
+import console.MorseExercise;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.Model;
-import org.apache.log4j.Logger;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -103,5 +103,4 @@ public class AWSIotStateHandlerTest extends AlexaStateHandlerTest<AWSIotStateHan
         assertFalse(handler.doesThingExist(AlexaScope.APPLICATION));
         assertFalse(handler.doesThingExist(AlexaScope.USER));
     }
-
 }

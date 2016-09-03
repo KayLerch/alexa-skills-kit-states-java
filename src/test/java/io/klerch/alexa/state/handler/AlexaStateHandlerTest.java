@@ -28,7 +28,7 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
 
     @Before
     public void setUp() {
-        final Application application = new Application("applicationId");
+        final Application application = new Application("applicationId2");
         final User user = User.builder().withUserId("userId").withAccessToken("accessToken").build();
         session = Session.builder().withSessionId("sessionId")
                 .withApplication(application).withUser(user).build();

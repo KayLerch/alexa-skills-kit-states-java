@@ -90,7 +90,7 @@ public abstract class AlexaStateModel {
      * @param id an identifier for this model instance.
      */
     public void setId(final String id) {
-        if (id != null) {
+        if (id != null && !id.isEmpty()) {
             Validate.matchesPattern(id, validIdPattern, "Chosen model Id contains illegal characters. Ensure your Id matches the following pattern: " + validIdPattern);
             this.__internalId = id;
         }
@@ -364,8 +364,8 @@ public abstract class AlexaStateModel {
      * @return True, if the field has the AlexaStateSave-annotation and given scope (or an included scope)
      */
     private boolean isStateSave(final Field field, final AlexaScope scope) {
-        // either field itself is annotated as statesave in given scope or whole class is statesave in the given scope
-        // however, StateIgnore in given scope prevends field of being statesave
+        // either field itself is tagged as state-save in given scope or whole class is statesave in the given scope
+        // however, StateIgnore in given scope prevents field of being statesave
         return ((!field.isAnnotationPresent(AlexaStateIgnore.class)) &&
                 ((field.isAnnotationPresent(AlexaStateSave.class) && scope.includes(field.getAnnotation(AlexaStateSave.class).Scope()) ||
                         (this.getClass().isAnnotationPresent(AlexaStateSave.class) && scope.includes(this.getClass().getAnnotation(AlexaStateSave.class).Scope())))));

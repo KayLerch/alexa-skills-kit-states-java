@@ -203,6 +203,8 @@ public class AlexaStateModelTest {
         assertTrue(new Model().hasSessionScopedField());
         assertTrue(new Model().hasApplicationScopedField());
         assertTrue(new Model().hasUserScopedField());
+        assertTrue(new ModelUser().hasSessionScopedField());
+        assertTrue(new ModelUser().hasUserScopedField());
     }
 
     @Test
@@ -210,6 +212,7 @@ public class AlexaStateModelTest {
         assertFalse(new EmptyModel().hasSessionScopedField());
         assertFalse(new EmptyModel().hasApplicationScopedField());
         assertFalse(new EmptyModel().hasUserScopedField());
+        assertFalse(new ModelUser().hasApplicationScopedField());
     }
 
     @Test
