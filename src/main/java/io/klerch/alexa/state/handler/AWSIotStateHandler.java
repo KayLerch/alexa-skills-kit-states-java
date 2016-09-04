@@ -286,7 +286,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         createThingIfNotExisting(scope);
         final String payload = "{\"state\":{\"desired\":{\"" + model.getAttributeKey() + "\":" + model.toJSON(scope) + "}}}";
         publishState(thingName, payload);
-        log.info(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
+        log.debug(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
     }
 
     private void publishState(final String thingName, final String json) throws AlexaStateException {
