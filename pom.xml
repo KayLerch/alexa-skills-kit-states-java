@@ -13,6 +13,17 @@
     <description>This SDK is an extension to the Alexa Skills SDK for Java. It provides a framework for managing state of POJO models in a variety of persistence stores in an Alexa skill.</description>
     <url>https://github.com/KayLerch/alexa-skills-kit-states-java</url>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
     <licenses>
         <license>
             <name>GNU GENERAL PUBLIC LICENSE, Version 3.0</name>
