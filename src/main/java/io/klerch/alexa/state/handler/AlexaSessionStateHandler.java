@@ -63,7 +63,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(AlexaStateModel model) throws AlexaStateException {
+    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
         // scope annotations will be ignored as there is only one context you can saveState attributes
         // thus scope will always be session
         session.setAttribute(model.getAttributeKey(), model.toMap(AlexaScope.SESSION));
@@ -74,7 +74,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateException {
+    public void removeModel(final AlexaStateModel model) throws AlexaStateException {
         session.removeAttribute(model.getAttributeKey());
         log.debug(String.format("Removed state from session attributes for '%1$s'.", model));
     }
@@ -83,7 +83,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass) throws AlexaStateException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
         return readModel(modelClass, null);
     }
 
@@ -92,7 +92,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     @SuppressWarnings("unchecked")
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(Class<TModel> modelClass, String id) throws AlexaStateException {
+    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
         final Object o = session.getAttribute(TModel.getAttributeKey(modelClass, id));
         if (o == null) {
             log.info(String.format("Could not find state for '%1$s' in session attributes.", TModel.getAttributeKey(modelClass, id)));
