@@ -1,4 +1,4 @@
-__Current state__: Collecting feedback, do serious testing
+__Current state__: Releasing ...
 
 #Alexa Skills Kit extensions SDK for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
