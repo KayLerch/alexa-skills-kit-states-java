@@ -234,7 +234,7 @@ handler.readModel(User.class, "Bob").ifPresent(bob -> bob.removeState());
 ## See how it works
 Putting it together, there's a lot you can do with these extensions in
 regards to state management in your Alexa skill.
-Get detailed information for this SDK in the [Javadocs](https://cdn.rawgit.com/KayLerch/alexa-skills-kit-states-java/master/docs/apidocs/index.html).
+Get detailed information for this SDK in the [Javadocs](https://kaylerch.github.io/alexa-skills-kit-states-java/apidocs/).
 
 One last example. Running _userScored("Bob", 100)_
 ```java

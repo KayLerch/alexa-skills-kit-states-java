@@ -6,7 +6,40 @@
 
     <groupId>io.klerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.1</version>
+    <packaging>jar</packaging>
+
+    <name>Alexa Skills Kit States SDK for Java</name>
+    <description>This SDK is an extension to the Alexa Skills SDK for Java. It provides a framework for managing state of POJO models in a variety of persistence stores in an Alexa skill.</description>
+    <url>https://github.com/KayLerch/alexa-skills-kit-states-java</url>
+
+    <licenses>
+        <license>
+            <name>GNU GENERAL PUBLIC LICENSE, Version 3.0</name>
+            <url>https://www.gnu.org/licenses/gpl.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <issueManagement>
+        <url>https://github.com/KayLerch/alexa-skills-kit-states-java/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+
+    <scm>
+        <connection>scm:git:git://github.com/KayLerch/alexa-skills-kit-states-java.git</connection>
+        <developerConnection>scm:git:ssh://github.com:KayLerch/alexa-skills-kit-states-java.git</developerConnection>
+        <url>https://github.com/KayLerch/alexa-skills-kit-states-java</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>klerch</id>
+            <name>Kay Lerch</name>
+            <email>kay.lerch@gmx.de</email>
+            <url>http://www.klerch.io</url>
+        </developer>
+    </developers>
 
     <properties>
         <maven.surefire.failsafe.version>2.16</maven.surefire.failsafe.version>
@@ -45,7 +78,7 @@
                 <configuration>
                     <defaultAuthor>Kay Lerch</defaultAuthor>
                     <description>Extends Alexa Skills Kit with an SDK to manage state in your Alexa skills object-oriented.</description>
-                    <failOnError>true</failOnError>
+                    <failOnError>false</failOnError>
                     <outputDirectory>docs</outputDirectory>
                     <reportOutputDirectory>docs</reportOutputDirectory>
                 </configuration>
