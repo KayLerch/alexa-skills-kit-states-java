@@ -132,7 +132,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         else {
             // if not a map than expect it to be the model
             // this only happens if a model was added to the session before its json-serialization
-            TModel model = (TModel)o;
+            final TModel model = (TModel)o;
             log.debug(String.format("Read state for '%1$s' in session attributes.", model));
             return Optional.of(model);
         }

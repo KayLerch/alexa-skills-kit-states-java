@@ -8,8 +8,13 @@ for reading state from and (permanently) saving state to either an Alexa session
 or one of the aforementioned data stores. This also is your __framework for
 building your own state handlers__ for any possible data store.
 
-It can __save you hundreds of lines of code__. See following examples where
-you can see how to load / create state of your prepared POJO model, updating
+![Scopes in Alexa Skills Kit](/img/alexa-scopes-in-states-sdk.png)
+
+Don't be scared by the complexity of that schema. Most of it is hidden for you when
+using the SDK.
+
+This SDK can __save you hundreds of lines of code__. See following examples where
+you can see how to load / create state of your prepared POJO model (referred as AlexaStateModel), updating
 some value and persist the update.
 
 ### Managing Alexa session state in _Alexa Session_
