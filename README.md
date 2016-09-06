@@ -1,4 +1,4 @@
-__Current state__: Releasing ...
+__Reference project__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/tree/master/skill) as a reference.
 
 #Alexa Skills Kit extensions SDK for state management
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
@@ -12,6 +12,23 @@ building your own state handlers__ for any possible data store.
 
 Don't be scared by the complexity of that schema. Most of it is hidden for you when
 using the SDK.
+
+## How to use
+Add below Maven dependency to your project.
+
+```xml
+<dependencies>
+  ...
+  <dependency>
+    <groupId>io.klerch</groupId>
+    <artifactId>alexa-skills-kit-states-java</artifactId>
+    <version>0.2.1</version>
+  </dependency>
+  ...
+</dependencies>
+```
+
+Depending on what features you use from this SDK you also need to add dependencies to certain AWS SDKs dedicated to S3, DynamoDb or IoT.
 
 This SDK can __save you hundreds of lines of code__. See following examples where
 you can see how to load / create state of your prepared POJO model (referred as AlexaStateModel), updating
