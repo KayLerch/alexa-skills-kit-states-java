@@ -366,7 +366,7 @@ public abstract class AlexaStateModel {
     private boolean isStateSave(final Field field, final AlexaScope scope) {
         // either field itself is tagged as state-save in given scope or whole class is statesave in the given scope
         // however, StateIgnore in given scope prevents field of being statesave
-        return ((!field.isAnnotationPresent(AlexaStateIgnore.class)) &&
+        return ((!field.isAnnotationPresent(AlexaStateIgnore.class) || !scope.isIn(field.getAnnotation(AlexaStateIgnore.class).Scope())) &&
                 ((field.isAnnotationPresent(AlexaStateSave.class) && scope.includes(field.getAnnotation(AlexaStateSave.class).Scope()) ||
                         (this.getClass().isAnnotationPresent(AlexaStateSave.class) && scope.includes(this.getClass().getAnnotation(AlexaStateSave.class).Scope())))));
     }

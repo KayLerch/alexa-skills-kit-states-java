@@ -7,6 +7,7 @@
 package io.klerch.alexa.state.model;
 
 import io.klerch.alexa.state.handler.AlexaSessionStateHandler;
+import io.klerch.alexa.state.model.dummies.Model;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

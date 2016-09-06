@@ -34,6 +34,14 @@ import java.util.Optional;
 
 import static java.lang.String.format;
 
+/**
+ * As this handler works in the user and application scope it persists all models to a thing shadow in AWS IoT.
+ * A saved state goes into the "desired" JSON portion of a shadow state whereas state is read only from
+ * the "reported" portion of that shadow. That said this handler differs a bit from the other ones as you
+ * cannot expect to read state like you wrote it to the store. It needs the thing to fulfill the desired
+ * state and reports it back to the shadow. That's how you cannot only trigger physical action by saving state
+ * over this handler but also get informed about current thing state.
+ */
 public class AWSIotStateHandler extends AlexaSessionStateHandler {
     private final Logger log = Logger.getLogger(AWSIotStateHandler.class);
 

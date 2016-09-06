@@ -9,8 +9,7 @@ package io.klerch.alexa.state.handler;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
-import io.klerch.alexa.state.model.Model;
-import org.apache.log4j.Logger;
+import io.klerch.alexa.state.model.dummies.Model;
 import org.junit.Test;
 import org.mockito.Mockito;
 

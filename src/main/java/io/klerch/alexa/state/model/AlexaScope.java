@@ -6,6 +6,8 @@
  */
 package io.klerch.alexa.state.model;
 
+import java.util.Arrays;
+
 /**
  * The scope defines in which context state is stored in the persistence stores. Alexa gives you three
  * of those contexts. One is the session-scope which is valid throughout one user-session. Values saved in this
@@ -54,6 +56,10 @@ public enum AlexaScope {
         // this is how scopes with same values exclude each other (which is desirable for user and application)
 
         return scope.getValue() > this.value || this.equals(scope);
+    }
+
+    public boolean isIn(AlexaScope... scopes) {
+        return Arrays.stream(scopes).filter(this::equals).findAny().isPresent();
     }
 
     /**

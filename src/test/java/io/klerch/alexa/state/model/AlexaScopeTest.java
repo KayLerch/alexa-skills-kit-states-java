@@ -33,6 +33,22 @@ public class AlexaScopeTest {
     }
 
     @Test
+    public void isIn() throws Exception {
+        Assert.assertTrue(AlexaScope.SESSION.isIn(AlexaScope.SESSION));
+        Assert.assertTrue(AlexaScope.SESSION.isIn(AlexaScope.SESSION, AlexaScope.USER));
+        Assert.assertTrue(AlexaScope.SESSION.isIn(AlexaScope.SESSION, AlexaScope.APPLICATION));
+        Assert.assertFalse(AlexaScope.SESSION.isIn(AlexaScope.USER, AlexaScope.APPLICATION));
+        Assert.assertTrue(AlexaScope.USER.isIn(AlexaScope.USER));
+        Assert.assertTrue(AlexaScope.USER.isIn(AlexaScope.SESSION, AlexaScope.USER));
+        Assert.assertTrue(AlexaScope.USER.isIn(AlexaScope.USER, AlexaScope.APPLICATION));
+        Assert.assertFalse(AlexaScope.USER.isIn(AlexaScope.SESSION, AlexaScope.APPLICATION));
+        Assert.assertTrue(AlexaScope.APPLICATION.isIn(AlexaScope.APPLICATION));
+        Assert.assertTrue(AlexaScope.APPLICATION.isIn(AlexaScope.APPLICATION, AlexaScope.USER));
+        Assert.assertTrue(AlexaScope.APPLICATION.isIn(AlexaScope.SESSION, AlexaScope.APPLICATION));
+        Assert.assertFalse(AlexaScope.APPLICATION.isIn(AlexaScope.SESSION, AlexaScope.USER));
+    }
+
+    @Test
     public void excludes() throws Exception {
         Assert.assertTrue(AlexaScope.APPLICATION.excludes(AlexaScope.SESSION));
         Assert.assertTrue(AlexaScope.APPLICATION.excludes(AlexaScope.USER));

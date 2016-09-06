@@ -11,6 +11,7 @@ import com.amazon.speech.speechlet.Session;
 import com.amazon.speech.speechlet.User;
 import io.klerch.alexa.state.handler.AlexaSessionStateHandler;
 import io.klerch.alexa.state.handler.AlexaStateHandler;
+import io.klerch.alexa.state.model.dummies.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -216,27 +217,95 @@ public class AlexaStateModelTest {
     }
 
     @Test
-    public void getSaveStateFields() throws Exception {
-        List<Field> fields = new Model().getSaveStateFields();
-        assertNotNull(fields);
-        assertFalse(fields.isEmpty());
+    public void getSaveStateFieldsWithSessionModel() throws Exception {
+        List<Field> fields = new SessionModel().getSaveStateFields();
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        // should not contain
         assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
-        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
 
-        fields = new Model().getSaveStateFields(AlexaScope.APPLICATION);
-        assertNotNull(fields);
-        assertFalse(fields.isEmpty());
+        fields = new SessionModel().getSaveStateFields(AlexaScope.SESSION);
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+        // should not contain
         assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
-        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleUser")).findAny().isPresent());
-        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
-        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleApplication")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
 
-        fields = new Model().getSaveStateFields(AlexaScope.USER);
-        assertNotNull(fields);
-        assertFalse(fields.isEmpty());
+        fields = new SessionModel().getSaveStateFields(AlexaScope.APPLICATION);
+        assertTrue(fields.isEmpty());
+
+        fields = new SessionModel().getSaveStateFields(AlexaScope.USER);
+        assertTrue(fields.isEmpty());
+    }
+
+    @Test
+    public void getSaveStateFieldsWithUserModel() throws Exception {
+        List<Field> fields = new UserModel().getSaveStateFields();
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        // should not contain
         assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
-        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleApplication")).findAny().isPresent());
-        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleSession")).findAny().isPresent());
-        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+
+        fields = new UserModel().getSaveStateFields(AlexaScope.SESSION);
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+        // should not contain
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+
+        fields = new UserModel().getSaveStateFields(AlexaScope.APPLICATION);
+        assertTrue(fields.isEmpty());
+
+        fields = new UserModel().getSaveStateFields(AlexaScope.USER);
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+        // should not contain
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+    }
+
+    @Test
+    public void getSaveStateFieldsWithApplicationModel() throws Exception {
+        List<Field> fields = new ApplicationModel().getSaveStateFields();
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        // should not contain
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+
+        fields = new ApplicationModel().getSaveStateFields(AlexaScope.SESSION);
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+        // should not contain
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+
+        fields = new ApplicationModel().getSaveStateFields(AlexaScope.USER);
+        assertTrue(fields.isEmpty());
+
+        fields = new ApplicationModel().getSaveStateFields(AlexaScope.APPLICATION);
+        // should contain
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleString")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreSession")).findAny().isPresent());
+        assertTrue(fields.stream().filter(x -> x.getName().equals("sampleIgnoreUser")).findAny().isPresent());
+        // should not contain
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnoreApplication")).findAny().isPresent());
+        assertFalse(fields.stream().filter(x -> x.getName().equals("sampleIgnore")).findAny().isPresent());
     }
 }
