@@ -1,4 +1,4 @@
-[![Join the chat at https://gitter.im/alexa-skills-kit-states-java/Lobby](https://badges.gitter.im/alexa-skills-kit-states-java/Lobby.svg)](https://gitter.im/alexa-skills-kit-states-java/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/alexa-skills-kit-states-java/Lobby](https://badges.gitter.im/alexa-skills-kit-states-java/Lobby.svg)](https://gitter.im/alexa-skills-kit-states-java/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![GPL Licence](https://img.shields.io/aur/license/yaourt.svg?maxAge=2592000)](https://opensource.org/licenses/GPL-3.0/) 
 
 __Reference project__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/tree/master/skill) as a reference.
 
