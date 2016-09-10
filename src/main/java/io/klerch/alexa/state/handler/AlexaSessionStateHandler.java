@@ -113,12 +113,6 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
                                 log.error(String.format("Could not set value for '%1$s' of model '%2$s'", field.getName(), model), e);
                             }
                         });
-                /*for (final Field field : model.getSaveStateFields(AlexaScope.SESSION)) {
-                    final String fieldName = field.getName();
-                    if (childAttributes.containsKey(fieldName)) {
-                        model.set(field, childAttributes.get(field.getName()));
-                    }
-                }*/
                 log.debug(String.format("Read state for '%1$s' in session attributes.", model));
             }
             return model != null ? Optional.of(model) : Optional.empty();

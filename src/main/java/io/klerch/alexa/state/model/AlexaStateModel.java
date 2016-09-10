@@ -9,7 +9,6 @@ package io.klerch.alexa.state.model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import io.klerch.alexa.state.handler.AWSS3StateHandler;
 import io.klerch.alexa.state.handler.AlexaStateHandler;
 import io.klerch.alexa.state.model.serializer.AlexaAppStateSerializer;
 import io.klerch.alexa.state.model.serializer.AlexaSessionStateSerializer;
@@ -419,7 +418,7 @@ public abstract class AlexaStateModel {
             Validate.notNull(this.__handler, "Model needs a handler for its initialization.");
 
             try {
-                TModel model = (TModel)modelClass.newInstance();
+                final TModel model = (TModel)modelClass.newInstance();
                 model.setId(__internalId);
                 model.setHandler(__handler);
                 return model;
