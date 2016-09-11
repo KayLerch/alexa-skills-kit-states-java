@@ -49,7 +49,6 @@ public class AWSIotStateHandlerTest extends AlexaStateHandlerTest<AWSIotStateHan
                 if (invocationOnMock.getMethod().getName().equals("getThingShadow")) {
                     // build shadow JSON with reported state for Model with one
                     // instance having an id and another having no id
-                    final AWSIotStateHandler handler = new AWSIotStateHandler(session);
                     final String keyWithId = AlexaStateModel.getAttributeKey(Model.class, modelId);
                     final String keyWithoutId = AlexaStateModel.getAttributeKey(Model.class, null);
                     final String jsonWithId = "\"" + keyWithId + "\":{\"id\":\"" + modelId + "\",\"sampleApplication\":true,\"sampleUser\":\"sampleUser\"}";

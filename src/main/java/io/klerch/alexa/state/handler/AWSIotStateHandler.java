@@ -47,9 +47,9 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
     private final AWSIot awsClient;
     private final AWSIotData awsDataClient;
-    private final String thingAttributeName = "name";
-    private final String thingAttributeUser = "amzn-user-id";
-    private final String thingAttributeApp = "amzn-app-id";
+    private static final String thingAttributeName = "name";
+    private static final String thingAttributeUser = "amzn-user-id";
+    private static final String thingAttributeApp = "amzn-app-id";
     private List<String> thingsExisting = new ArrayList<>();
 
     public AWSIotStateHandler(final Session session) {

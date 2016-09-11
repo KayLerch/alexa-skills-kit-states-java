@@ -10,6 +10,7 @@ import com.amazon.speech.speechlet.Application;
 import com.amazon.speech.speechlet.Session;
 import com.amazon.speech.speechlet.User;
 import io.klerch.alexa.state.model.dummies.Model;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -23,6 +24,7 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
     THandler handler;
     Session session;
     final String modelId = "modelId";
+    final String absentModelId = "nonexisting";
 
     public abstract THandler getHandler();
 
@@ -93,6 +95,11 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
 
         handler.removeModel(model);
         assertFalse(session.getAttributes().containsKey(key));
+    }
+
+    @Test
+    public void readAbsentModel() throws Exception {
+        Assert.assertFalse(handler.readModel(Model.class, absentModelId).isPresent());
     }
 
     @Test

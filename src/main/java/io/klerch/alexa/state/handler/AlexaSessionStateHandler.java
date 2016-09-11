@@ -13,7 +13,6 @@ import io.klerch.alexa.state.model.AlexaStateModelFactory;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import org.apache.log4j.Logger;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Optional;
 

@@ -7,8 +7,7 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.GetItemResult;
+import com.amazonaws.services.dynamodbv2.model.*;
 import io.klerch.alexa.state.model.dummies.Model;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -17,15 +16,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.*;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 
 public class AWSDynamoStateHandlerTest extends AlexaStateHandlerTest<AWSDynamoStateHandler> {
-    private final String tableName = "tableName";
 
     @Override
     public AWSDynamoStateHandler getHandler() {
         final AmazonDynamoDBClient awsClient = mock(AmazonDynamoDBClient.class);
-        handler = new AWSDynamoStateHandler(session, awsClient, tableName);
+        handler = new AWSDynamoStateHandler(session, awsClient);
+
+        final String tableName = handler.getTableName();
 
         // prepare static read return from DynamoDB without given model-Id
         final String jsonApp = "{\"id\":null,\"sampleApplication\":true}";
@@ -59,10 +60,27 @@ public class AWSDynamoStateHandlerTest extends AlexaStateHandlerTest<AWSDynamoSt
         final GetItemResult resultUserId = new GetItemResult().withItem(mapUserId);
         final GetItemResult resultAppId = new GetItemResult().withItem(mapAppId);
 
+        // mock get items for model with id
         Mockito.when(awsClient.getItem(tableName, handler.getUserScopedKeyAttributes(Model.class, modelId)))
                 .thenReturn(resultUserId);
         Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class, modelId)))
                 .thenReturn(resultAppId);
+
+        // mock get items for absent model (with empty response)
+        Mockito.when(awsClient.getItem(tableName, handler.getUserScopedKeyAttributes(Model.class, absentModelId)))
+                .thenReturn(new GetItemResult());
+        Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class, absentModelId)))
+                .thenReturn(new GetItemResult());
+
+        // on create table call always return table in ACTIVE state
+        final TableDescription tableDescription = new TableDescription().withTableName(tableName).withTableStatus(TableStatus.ACTIVE);
+        final CreateTableResult createResult = new CreateTableResult().withTableDescription(tableDescription);
+        Mockito.when(awsClient.createTable(any(CreateTableRequest.class))).thenReturn(createResult);
+
+        // mock describe table request to always return a table whose name is
+        final DescribeTableResult describeResult = new DescribeTableResult().withTable(tableDescription);
+        Mockito.when(awsClient.describeTable(any(DescribeTableRequest.class))).thenReturn(describeResult);
+
         return handler;
     }
 

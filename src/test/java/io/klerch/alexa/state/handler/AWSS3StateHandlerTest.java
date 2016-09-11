@@ -29,7 +29,10 @@ public class AWSS3StateHandlerTest extends AlexaStateHandlerTest<AWSS3StateHandl
         final AmazonS3Client s3Client = Mockito.mock(AmazonS3Client.class, new Answer() {
             @Override
             public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-                if (invocationOnMock.getMethod().getName().equals("doesObjectExist")) return true;
+                if (invocationOnMock.getMethod().getName().equals("doesObjectExist")) {
+                    // true in case of any model requested beside the one assumed as absent
+                    return !(Arrays.stream(invocationOnMock.getArguments()).filter(p -> p.toString().contains(absentModelId)).findAny().isPresent());
+                }
                 if (invocationOnMock.getMethod().getName().equals("putObject")) return new PutObjectResult();
                 if (invocationOnMock.getMethod().getName().equals("deleteObject")) return null;
                 if (invocationOnMock.getMethod().getName().equals("getObject")) {

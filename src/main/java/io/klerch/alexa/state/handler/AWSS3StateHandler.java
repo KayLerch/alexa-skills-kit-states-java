@@ -32,8 +32,8 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
 
     private final AmazonS3 awsClient;
     private final String bucketName;
-    private final String folderNameApp = "__application";
-    private final String fileExtension = "json";
+    private static final String folderNameApp = "__application";
+    private static final String fileExtension = "json";
 
     /**
      * Takes the Alexa session. An AWS client for accessing the S3 bucket will make use

@@ -31,11 +31,11 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     private final String tableName;
     private final long readCapacityUnits;
     private final long writeCapacityUnits;
-    private final String tablePrefix = "alexa-";
-    private final String attributeValueApp = "__application";
-    private final String pkModel = "model-class";
-    private final String pkUser = "amzn-user-id";
-    private final String attributeKeyState = "state";
+    private static final String tablePrefix = "alexa-";
+    private static final String attributeValueApp = "__application";
+    private static final String pkModel = "model-class";
+    private static final String pkUser = "amzn-user-id";
+    private static final String attributeKeyState = "state";
     private Boolean tableExistenceApproved = false;
 
     /**
