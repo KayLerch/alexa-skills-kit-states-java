@@ -162,10 +162,9 @@ public abstract class AlexaStateModel {
     }
 
     /**
-     * Generic getter for all the fields in this model. A field needs to be either public or must have a public
-     * getter following the naming convention getFieldname() in order to return its value. If there's a problem
-     * with accessing the value this method returns null.
-     * @param field The field whose value you desire. It must be publically accessible at least through a getter-method and of course must be owned by the model class.
+     * Generic getter for all the fields in this model. A getter method following the naming convention
+     * get[Fieldname] is called. Otherwise the field is read out directly.
+     * @param field The field whose value you desire.
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      * @return Value of the given field.
      */
@@ -176,6 +175,7 @@ public abstract class AlexaStateModel {
             // look for a getter for this field
             final Method getter = ReflectionUtils.getGetter(this, fieldName);
             // if there is a getter go for it otherwise read value from field directly
+            field.setAccessible(true);
             return getter != null ? getter.invoke(this) : field.get(this);
         }
         catch (IllegalAccessException | InvocationTargetException e) {
@@ -186,15 +186,14 @@ public abstract class AlexaStateModel {
     }
 
     /**
-     * Generic setter for all the fields in this model. A field needs to be either public or must have a public
-     * setter following the naming convention setFieldname in order to assign the value given. If there's a problem
-     * with accessing the value this method returns false
-     * @param field The field whose value you want to set. It must be publically accessible at least through a setter-method and of course must be owned by the model class.
+     * Generic setter for all the fields in this model. A setter method following the naming convention
+     * set[Fieldname] is used to write the given value. Otherwise the field is written directly. If there's a problem
+     * with accessing the field this method returns false
+     * @param field The field whose value you want to set.
      * @param value New value for the given field
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
-     * @return True, if value was set successfully.
      */
-    public Boolean set(final Field field, final Object value) throws AlexaStateException {
+    public void set(final Field field, final Object value) throws AlexaStateException {
         final String fieldName = field.getName();
         // prefer setting value with setter over direct value assignment to field
         try {
@@ -202,12 +201,12 @@ public abstract class AlexaStateModel {
             final Method setter = ReflectionUtils.getSetter(this, fieldName);
             if (setter != null) {
                 // invoke setter
-                setter.invoke(this, value); return true;
+                setter.invoke(this, value);
             }
             else {
                 // or direct value assignment
+                field.setAccessible(true);
                 field.set(this, value);
-                return false;
             }
         }
         catch (IllegalAccessException | InvocationTargetException e) {

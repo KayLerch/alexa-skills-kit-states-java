@@ -88,7 +88,7 @@ in minutes.
 ## 1) Prepare your POJO model class
 Stop writing single values to a session or table and __start organizing your state
 in objects__. The above sample had the _User_-object. Think of a POJO with some
-members and corresponding getters and setters.
+member fields.
 1) Let your POJO derive from _AlexaStateModel_ and you are ready to go.
 2) Tag members of your POJO whose state you want to save.
 ```java

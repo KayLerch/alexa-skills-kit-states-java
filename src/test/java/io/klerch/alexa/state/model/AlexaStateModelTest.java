@@ -127,6 +127,15 @@ public class AlexaStateModelTest {
     }
 
     @Test
+    public void getSetPrivate() throws Exception {
+        final Model model = new Model();
+        final String value = "value";
+        final Field field = model.getClass().getDeclaredField("privateField");
+        model.set(field, value);
+        assertEquals(model.get(field), value);
+    }
+
+    @Test
     public void setExisting() throws Exception {
         final Model model = new Model();
         final String value = "value";
