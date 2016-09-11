@@ -25,7 +25,7 @@ Add below Maven dependency to your project.
   <dependency>
     <groupId>io.klerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>0.2.1</version>
+    <version>0.2.2</version>
   </dependency>
   ...
 </dependencies>
