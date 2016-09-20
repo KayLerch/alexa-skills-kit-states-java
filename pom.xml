@@ -167,7 +167,7 @@
                     <defaultAuthor>Kay Lerch</defaultAuthor>
                     <description>Extends Alexa Skills Kit with an SDK to manage state in your Alexa skills object-oriented.</description>
                     <failOnError>false</failOnError>
-                    <!-- Output to docs just once in a while -->
+                    <!-- Do output to docs only on demand -->
                     <!--
                     <outputDirectory>docs</outputDirectory>
                     <reportOutputDirectory>docs</reportOutputDirectory>
