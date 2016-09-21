@@ -11,8 +11,8 @@ import io.klerch.alexa.state.model.AlexaStateModel;
 
 public class AlexaStateException extends Exception {
     private static final long serialVersionUID = 466433664499611218L;
-    private final AlexaStateModel model;
-    private final AlexaStateHandler handler;
+    private final transient AlexaStateModel model;
+    private final transient AlexaStateHandler handler;
 
     public AlexaStateException(final AlexaStateExceptionBuilder builder) {
         super(builder.errorMessage, builder.cause);
