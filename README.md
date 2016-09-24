@@ -4,7 +4,7 @@
 
 __Reference project__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/tree/master/skill) as a reference.
 
-#Alexa Skills Kit extensions SDK for state management
+#Alexa States SDK for Java
 
 This SDK is an extension to the Amazon Alexa Skills Kit for Java which
 gives you a really convenient alternative of __persisting session state in a growing
