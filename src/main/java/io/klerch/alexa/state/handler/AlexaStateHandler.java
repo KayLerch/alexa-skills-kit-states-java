@@ -7,12 +7,10 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
-import io.klerch.alexa.state.model.AlexaScope;
-import io.klerch.alexa.state.model.AlexaStateModelFactory;
-import io.klerch.alexa.state.model.AlexaStateSave;
+import io.klerch.alexa.state.model.*;
 import io.klerch.alexa.state.utils.AlexaStateException;
-import io.klerch.alexa.state.model.AlexaStateModel;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -59,11 +57,62 @@ public interface AlexaStateHandler {
 
     /**
      * The given model will be saved in the persistence store according to its {@link AlexaStateSave}-annotations.
-     * If you set up an Id for the model it will be accessible with it on later on reads to the handler.
+     * If you set up an Id for the model it will be accessible with it on later reads to the handler.
      * @param model Your model which needs to be a type of {@link AlexaStateModel}
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
     void writeModel(final AlexaStateModel model) throws AlexaStateException;
+
+    /**
+     * The given models will be saved in the persistence store according to their {@link AlexaStateSave}-annotations.
+     * If you set up an Id for the model it will be accessible with it on later reads to the handler.
+     * If you have multiple models to save always prefer this method as it tries to batch process
+     * the models so it reduces the number of write-transactions to one.
+     * @param models list of models to save state
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException;
+
+    /**
+     * The given value will be saved with the given id in the persistence store. Without giving
+     * it a scope the handler will save state of the given object in Alexa session (Scope = Session)
+     * @param id the key used when writing value to the store
+     * @param value the actual object whose value will be saved
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void writeValue(final String id, final Object value) throws AlexaStateException;
+
+    /**
+     * The given value will be saved with the given id in the persistence store. Keep in
+     * mind that for the AlexaSessionStateHandler USER and APPLICATION scope cannot be
+     * served. In that case the value will be saved to Alexa session and will not persist
+     * permanently.
+     * @param id the key used when writing value to the store
+     * @param value the actual object whose value will be saved
+     * @param scope the scope the value is saved
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void writeValue(final String id, final Object value, final AlexaScope scope) throws AlexaStateException;
+
+    /**
+     * The value of a given state object will be saved with its id in the persistence store. Keep in
+     * mind that for the AlexaSessionStateHandler USER and APPLICATION scope cannot be
+     * served. In that case the value will be saved to Alexa session and will not persist
+     * permanently.
+     * @param stateObject the state object to write to the persistence store
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void writeValue(final AlexaStateObject stateObject) throws AlexaStateException;
+
+    /**
+     * Values of given state objects will be saved with their ids in the persistence store. Keep in
+     * mind that for the AlexaSessionStateHandler USER and APPLICATION scope cannot be
+     * served. In that case the value will be saved to Alexa session and will not persist
+     * permanently.
+     * @param stateObjects the state objects to write to the persistence store
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException;
 
     /**
      * The given model will be removed from the persistence store. If it's not existing in the store nothing happens.
@@ -72,6 +121,16 @@ public interface AlexaStateHandler {
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
     void removeModel(final AlexaStateModel model) throws AlexaStateException;
+
+    /**
+     * Removes a single value state from the persistence store with the given key used
+     * when single value was written in store. You could also use this method to remove
+     * a model. In that case be sure you provide the attribute-key of the model - not its
+     * id.
+     * @param id the key of a single value object whose state you want to remove from the store.
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    void removeValue(final String id) throws AlexaStateException;
 
     /**
      * Reads out the model from the persistence store of this handler. Depending on the {@link AlexaScope AlexaScope}s configured in
@@ -97,4 +156,68 @@ public interface AlexaStateHandler {
      * @return A model matching the given type and id. Augmented with all the attributes found in the persistence store.
      */
     <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException;
+
+    /**
+     * Reads a single object value from the persistence store. If no scope is provided this method will
+     * always look for the model in Alexa session by default (Scope = Session). If you want
+     * to check existence of a state model keep in mind its id is the attribute-key of the
+     * model object, not the id you provided. The attribute-key derives from the model-id.
+     * @param id id of a state-object whose state you want to read from the store.
+     * @return the value of a state object with the given id. Empty, if not existent.
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    Optional<AlexaStateObject> readValue(final String id) throws AlexaStateException;
+
+    /**
+     * Reads a single object value from the persistence store. If you want
+     * to check existence of a state model keep in mind its id is the attribute-key of the
+     * model object, not the id you provided. The attribute-key derives from the model-id.
+     * @param id id of a state-object whose state you want to read from the store.
+     * @param scope read state-object in that scope.
+     * @return the value of a state object with the given id. Empty, if not existent.
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException;
+
+    /**
+     * Looks for a model in the persistence store. If no scope is provided this method will
+     * always look for the model in Alexa session by default (Scope = Session)
+     * @param modelClass Type of the model you would like to check for existence. It needs to be of type {@link AlexaStateModel}.
+     * @param <TModel> Type derived from {@link AlexaStateModel}
+     * @return True, if model exists
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    <TModel extends AlexaStateModel> boolean exists(final Class<TModel> modelClass) throws AlexaStateException;
+
+    /**
+     * Looks for a model in the persistence store in a given scope.
+     * @param modelClass Type of the model you would like to check for existence. It needs to be of type {@link AlexaStateModel}.
+     * @param <TModel> Type derived from {@link AlexaStateModel}
+     * @param <TModel> Type derived from {@link AlexaStateModel}
+     * @return True, if model exists in scope
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    <TModel extends AlexaStateModel> boolean exists(final Class<TModel> modelClass, final AlexaScope scope) throws AlexaStateException;
+
+    /**
+     * Looks for a state object with the given id. If no scope is provided this method will
+     * always look for the model in Alexa session by default (Scope = Session). If you want
+     * to check existence of a state model keep in mind its id is the attribute-key of the
+     * model object, not the id you provided. The attribute-key derives from the model-id.
+     * @param id id of a state-object whose existence you want to be checked in the store.
+     * @return True, if state object exists in the store
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    boolean exists(final String id) throws AlexaStateException;
+
+    /**
+     * Looks for a state object with the given id in the given scope. If you want
+     * to check existence of a state model keep in mind its id is the attribute-key of the
+     * model object, not the id you provided. The attribute-key derives from the model-id.
+     * @param id id of a state-object whose existence you want to be checked in the store.
+     * @param scope look for state-object in that scope.
+     * @return True, if state object exists in that scope
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     */
+    boolean exists(final String id, final AlexaScope scope) throws AlexaStateException;
 }
