@@ -7,6 +7,9 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.PutRequest;
+import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.iot.AWSIot;
 import com.amazonaws.services.iot.AWSIotClient;
 import com.amazonaws.services.iot.model.*;
@@ -14,12 +17,14 @@ import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
 import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
+import com.amazonaws.services.iotdata.model.PublishRequest;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
+import io.klerch.alexa.state.model.AlexaStateObject;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.utils.EncryptUtils;
 import org.apache.log4j.Logger;
@@ -28,9 +33,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static java.lang.String.format;
 
@@ -84,15 +87,35 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
+    public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
         // write to session
-        super.writeModel(model);
+        super.writeModels(models);
 
-        if (model.hasUserScopedField()) {
-            publishState(model, AlexaScope.USER);
+        for (final AlexaStateModel model : models) {
+            if (model.hasUserScopedField()) {
+                publishState(model, AlexaScope.USER);
+            }
+            if (model.hasApplicationScopedField()) {
+                publishState(model, AlexaScope.APPLICATION);
+            }
         }
-        if (model.hasApplicationScopedField()) {
-            publishState(model, AlexaScope.APPLICATION);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
+        // write to session
+        super.writeValues(stateObjects);
+
+        for (final AlexaStateObject stateObject : stateObjects) {
+
+            if (AlexaScope.USER.includes(stateObject.getScope()) ||
+                    AlexaScope.APPLICATION.includes(stateObject.getScope())) {
+                // only publish USER or APPLICATION scoped state objects
+                publishState(stateObject);
+            }
         }
     }
 
@@ -118,6 +141,17 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
             removeModelFromShadow(model, AlexaScope.APPLICATION);
         }
         log.debug(format("Removed state from AWS IoT shadow for '%1$s'.", model));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removeValue(final String id) throws AlexaStateException {
+        super.removeValue(id);
+        removeNodeFromShadow(id, AlexaScope.USER);
+        removeNodeFromShadow(id, AlexaScope.APPLICATION);
+        log.debug(String.format("Removed value from AWS IoT shadow for '%1$s'.", id));
     }
 
     /**
@@ -155,6 +189,17 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException {
+        if (AlexaScope.SESSION.includes(scope)) {
+            return super.readValue(id, scope);
+        }
+        return getNodeFromThingShadow(id, scope).map(value -> new AlexaStateObject(id, value, scope));
+    }
+
+    /**
      * Returns name of the thing whose shadow is updated by this handler. It depends on
      * the scope of the fields persisted in AWS IoT as APPLICATION-scoped fields go to a different
      * thing shadow than USER-scoped fields.
@@ -177,59 +222,6 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         if (!doesThingExist(thingName)) {
             createThing(thingName, scope);
         }
-    }
-
-    /**
-     * Returns if the thing dedicated to the scope given is existing in AWS IoT.
-     * @param scope The scope this thing is dedicated to
-     * @return True, if the thing dedicated to the scope given is existing in AWS IoT.
-     * @throws AlexaStateException Any error regarding thing creation or existence check
-     */
-    public boolean doesThingExist(final AlexaScope scope) throws AlexaStateException {
-        final String thingName = getThingName(scope);
-        return doesThingExist(thingName);
-    }
-
-    private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
-        final String nodeName = model.getAttributeKey();
-        final String thingName = getThingName(scope);
-        final String thingState = getState(scope);
-        try {
-            final ObjectMapper mapper = new ObjectMapper();
-            final JsonNode root = mapper.readTree(thingState);
-            if (!root.isMissingNode()) {
-                final JsonNode desired = root.path("state").path("desired");
-                if (!desired.isMissingNode() && desired instanceof ObjectNode) {
-                    ((ObjectNode) desired).remove(nodeName);
-                }
-            }
-            final String json = mapper.writeValueAsString(root);
-            publishState(thingName, json);
-        } catch (IOException e) {
-            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
-            log.error(error, e);
-            throw AlexaStateException.create(error).withCause(e).withModel(model).build();
-        }
-    }
-
-    private boolean fromThingShadowToModel(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
-        // read from item with scoped model
-        final String thingName = getThingName(scope);
-        final String thingState = getState(scope);
-        final String nodeName = model.getAttributeKey();
-        try {
-            final ObjectMapper mapper = new ObjectMapper();
-            final JsonNode node = mapper.readTree(thingState).path("state").path("reported").path(nodeName);
-            if (!node.isMissingNode()) {
-                final String json = mapper.writeValueAsString(node);
-                return model.fromJSON(json, scope);
-            }
-        } catch (IOException e) {
-            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", model, thingName);
-            log.error(error, e);
-            throw AlexaStateException.create(error).withCause(e).withModel(model).build();
-        }
-        return false;
     }
 
     /**
@@ -260,6 +252,66 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     public String getAppScopedThingName() {
         // thing names do not allow dots in it
         return session.getApplication().getApplicationId().replace(".", "-");
+    }
+
+    /**
+     * Returns if the thing dedicated to the scope given is existing in AWS IoT.
+     * @param scope The scope this thing is dedicated to
+     * @return True, if the thing dedicated to the scope given is existing in AWS IoT.
+     * @throws AlexaStateException Any error regarding thing creation or existence check
+     */
+    public boolean doesThingExist(final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+        return doesThingExist(thingName);
+    }
+
+    private void removeObjectFromShadow(final AlexaStateObject stateObject) throws AlexaStateException {
+        removeNodeFromShadow(stateObject.getKey(), stateObject.getScope());
+    }
+
+    private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
+        removeNodeFromShadow(model.getAttributeKey(), scope);
+    }
+
+    private void removeNodeFromShadow(final String nodeName, final AlexaScope scope) throws AlexaStateException {
+        final String thingName = getThingName(scope);
+        final String thingState = getState(scope);
+        try {
+            final ObjectMapper mapper = new ObjectMapper();
+            final JsonNode root = mapper.readTree(thingState);
+            if (!root.isMissingNode()) {
+                final JsonNode desired = root.path("state").path("desired");
+                if (!desired.isMissingNode() && desired instanceof ObjectNode) {
+                    ((ObjectNode) desired).remove(nodeName);
+                }
+            }
+            final String json = mapper.writeValueAsString(root);
+            publishState(thingName, json);
+        } catch (final IOException e) {
+            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", nodeName, thingName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).build();
+        }
+    }
+
+    private Optional<String> getNodeFromThingShadow(final String nodeName, final AlexaScope scope) throws AlexaStateException {
+        // read from item with scoped model
+        final String thingName = getThingName(scope);
+        final String thingState = getState(scope);
+        try {
+            final ObjectMapper mapper = new ObjectMapper();
+            final JsonNode node = mapper.readTree(thingState).path("state").path("reported").path(nodeName);
+            return !node.isMissingNode() ? Optional.of(mapper.writeValueAsString(node)) : Optional.empty();
+        } catch (IOException e) {
+            final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", nodeName, thingName);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).build();
+        }
+    }
+
+    private boolean fromThingShadowToModel(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
+        final Optional<String> state = getNodeFromThingShadow(model.getAttributeKey(), scope);
+        return state.isPresent() && model.fromJSON(state.get(), scope);
     }
 
     private String getState(final AlexaScope scope) throws AlexaStateException {
@@ -293,6 +345,16 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         final String thingName = getThingName(scope);
         createThingIfNotExisting(scope);
         final String payload = "{\"state\":{\"desired\":{\"" + model.getAttributeKey() + "\":" + model.toJSON(scope) + "}}}";
+        publishState(thingName, payload);
+        log.debug(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
+    }
+
+    private void publishState(final AlexaStateObject stateObject) throws AlexaStateException {
+        final String thingName = getThingName(stateObject.getScope());
+        createThingIfNotExisting(stateObject.getScope());
+        // wrap non-primitive values in quotes (json string-value)
+        final Object state = stateObject.getValue().getClass().isPrimitive() ? stateObject.getValue() : "\"" + stateObject.getValue() + "\"";
+        final String payload = "{\"state\":{\"desired\":{\"" + stateObject.getKey() + "\":" + state + "}}}";
         publishState(thingName, payload);
         log.debug(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
     }

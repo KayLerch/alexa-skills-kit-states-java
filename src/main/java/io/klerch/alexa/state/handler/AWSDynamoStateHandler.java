@@ -15,7 +15,6 @@ import io.klerch.alexa.state.model.AlexaStateObject;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.AlexaScope;
-import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -219,14 +218,6 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         } else {
             return readValueFromDb(id, scope).isPresent();
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
-        return this.readModel(modelClass, null);
     }
 
     public String getAttributeKeyState() {
