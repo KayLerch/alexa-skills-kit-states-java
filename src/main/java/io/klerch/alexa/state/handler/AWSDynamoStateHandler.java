@@ -146,11 +146,6 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModel(final AlexaStateModel model) throws AlexaStateException {
-        writeModels(Collections.singletonList(model));
-    }
-
-    @Override
     public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
         // write to session
         super.writeModels(models);
@@ -161,44 +156,33 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                 items.add(new WriteRequest(new PutRequest(item)));
             });
         }
-
-        if (!items.isEmpty()) {
-            // if there is something which needs to be written to dynamo db ensure table exists
-            ensureTableExists();
-            final BatchWriteItemRequest writeItemRequest = new BatchWriteItemRequest();
-            writeItemRequest.addRequestItemsEntry("key", items);
-            awsClient.batchWriteItem(writeItemRequest);
-        }
+        writeItemsToDb(items);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void writeValue(final String id, final Object value) throws AlexaStateException {
-        writeValue(id, value, AlexaScope.USER);
-    }
+    public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
+        // write to session
+        super.writeValues(stateObjects);
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void writeValue(final String id, final Object value, final AlexaScope scope) throws AlexaStateException {
-        Validate.notBlank(id, "Id of value written to DynamoDb must not be blank.");
-        if (value != null) {
-            if (AlexaScope.SESSION.includes(scope)) {
-                super.writeValue(id, value, scope);
-            }
-            else {
-                ensureTableExists();
-                final Map<String, AttributeValue> attributes = AlexaScope.USER.includes(scope) ?
-                        getUserScopedKeyAttributes(id) : getAppScopedKeyAttributes(id);
-                attributes.put(attributeKeyState, new AttributeValue(String.valueOf(value)));
-                awsClient.putItem(tableName, attributes);
-            }
-        } else {
-            log.info("No element '" + id + "' will be written to DynamoDb as its provided value is null.");
-        }
+        final List<WriteRequest> items = new ArrayList<>();
+
+        stateObjects.stream()
+                // select only USER or APPLICATION scoped state objects
+                .filter(stateObject -> AlexaScope.USER.includes(stateObject.getScope()) ||
+                        AlexaScope.APPLICATION.includes(stateObject.getScope()))
+                .forEach(stateObject -> {
+                    final String id = stateObject.getKey();
+                    final Object value = stateObject.getValue();
+                    final AlexaScope scope = stateObject.getScope();
+                    final Map<String, AttributeValue> item = AlexaScope.USER.includes(scope) ?
+                            getUserScopedKeyAttributes(id) : getAppScopedKeyAttributes(id);
+                    item.put(attributeKeyState, new AttributeValue(String.valueOf(value)));
+                    items.add(new WriteRequest(new PutRequest(item)));
+                });
+        writeItemsToDb(items);
     }
 
     /**
@@ -222,7 +206,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         super.removeValue(id);
         awsClient.deleteItem(tableName, getUserScopedKeyAttributes(id));
         awsClient.deleteItem(tableName, getAppScopedKeyAttributes(id));
-        log.debug(String.format("Removed value from session attributes for '%1$s'.", id));
+        log.debug(String.format("Removed value from DynamoDB for '%1$s'.", id));
     }
 
     /**
@@ -232,10 +216,9 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     public boolean exists(final String id, final AlexaScope scope) throws AlexaStateException {
         if (AlexaScope.SESSION.includes(scope)) {
             return super.exists(id, scope);
-        } else if (AlexaScope.USER.includes(scope)) {
+        } else {
             return readValueFromDb(id, scope).isPresent();
         }
-        return AlexaScope.SESSION.includes(scope) && session.getAttributes().containsKey(id);
     }
 
     /**
@@ -268,12 +251,12 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         // in order to write those values back to the session at the end of this method
         Boolean modelChanged = false;
         // and if there are user-scoped fields ...
-        if (model.hasUserScopedField() && readModelFromDb(model, id, AlexaScope.USER)) {
+        if (model.hasUserScopedField() && readModelFromDb(model, AlexaScope.USER)) {
             log.debug(String.format("Values applied from DynamoDB to user-scoped fields of model '%1$s'.", model));
             modelChanged = true;
         }
         // and if there are app-scoped fields ...
-        if (model.hasApplicationScopedField() && readModelFromDb(model, id, AlexaScope.APPLICATION)) {
+        if (model.hasApplicationScopedField() && readModelFromDb(model, AlexaScope.APPLICATION)) {
             log.debug(String.format("Values applied from DynamoDB to application-scoped fields of model '%1$s'.", model));
             modelChanged = true;
         }
@@ -296,7 +279,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     @Override
     public Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException {
         if (AlexaScope.SESSION.includes(scope)) {
-            super.readValue(id, scope);
+            return super.readValue(id, scope);
         }
         return readValueFromDb(id, scope).map(value -> new AlexaStateObject(id, value, scope));
     }
@@ -327,7 +310,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         return items;
     }
 
-    private boolean readModelFromDb(final AlexaStateModel model, final String id, final AlexaScope scope) throws AlexaStateException {
+    private boolean readModelFromDb(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
         final String json = readValueFromDb(model.getAttributeKey(), scope).orElse("{}");
         // extract values from json and assign it to model
         return model.fromJSON(json, scope);
@@ -342,6 +325,16 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         if (attributes == null || attributes.isEmpty()) return Optional.empty();
         // read state as json-string
         return Optional.of(attributes.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS());
+    }
+
+    private void writeItemsToDb(final List<WriteRequest> items) throws AlexaStateException {
+        if (!items.isEmpty()) {
+            // if there is something which needs to be written to dynamo db ensure table exists
+            ensureTableExists();
+            final BatchWriteItemRequest writeItemRequest = new BatchWriteItemRequest();
+            writeItemRequest.addRequestItemsEntry("key", items);
+            awsClient.batchWriteItem(writeItemRequest);
+        }
     }
 
     private void ensureTableExists() throws AlexaStateException {

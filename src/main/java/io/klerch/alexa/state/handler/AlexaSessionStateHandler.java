@@ -54,7 +54,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> TModel createModel(final Class<TModel> modelClass, String id) {
+    public <TModel extends AlexaStateModel> TModel createModel(final Class<TModel> modelClass, final String id) {
         // acts just like a factory for custom models
         return AlexaStateModelFactory.createModel(modelClass, this, id);
     }
@@ -64,6 +64,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void writeModel(final AlexaStateModel model) throws AlexaStateException {
+        Validate.notNull(model, "Model to write must not be null.");
         writeModels(Collections.singletonList(model));
     }
 
@@ -72,6 +73,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
+        Validate.notNull(models, "Collection of models to write must not be null.");
         models.forEach(model -> {
             try {
                 // scope annotations will be ignored as there is only one context you can saveState attributes
@@ -89,7 +91,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void writeValue(final String id, final Object value) throws AlexaStateException {
-        writeValue(id, value, AlexaScope.USER);
+        writeValue(id, value, AlexaScope.SESSION);
     }
 
     /**
@@ -97,9 +99,9 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void writeValue(final String id, final Object value, final AlexaScope scope) throws AlexaStateException {
-        if (AlexaScope.SESSION.includes(scope)) {
-            session.setAttribute(id, value);
-        }
+        Validate.notBlank(id, "Id of single state object must not be blank.");
+        Validate.notNull(scope, "Scope of single state object must not be null.");
+        writeValue(new AlexaStateObject(id, value, scope));
     }
 
     /**
@@ -107,6 +109,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void writeValue(final AlexaStateObject stateObject) throws AlexaStateException {
+        Validate.notNull(stateObject, "State object must not be null.");
         writeValues(Collections.singleton(stateObject));
     }
 
@@ -116,13 +119,11 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
         Validate.notNull(stateObjects, "List of state objects to write to persistence store must not be null.");
-        stateObjects.forEach(stateObject -> {
-            try {
-                writeValue(stateObject.getKey(), stateObject.getValue(), stateObject.getScope());
-            } catch (AlexaStateException e) {
-                log.error(e);
-            }
-        });
+        stateObjects.stream()
+                .filter(o -> AlexaScope.SESSION.includes(o.getScope()))
+                .forEach(stateObject -> {
+                    session.setAttribute(stateObject.getKey(), stateObject.getValue());
+                });
     }
 
     /**
@@ -130,6 +131,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void removeModel(final AlexaStateModel model) throws AlexaStateException {
+        Validate.notNull(model, "Model to be removed must not be null.");
         removeValue(model.getAttributeKey());
     }
 
@@ -138,6 +140,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void removeValue(final String id) throws AlexaStateException {
+        Validate.notBlank(id, "Id of object to remove must not be blank.");
         session.removeAttribute(id);
         log.debug(String.format("Removed state from session attributes for '%1$s'.", id));
     }

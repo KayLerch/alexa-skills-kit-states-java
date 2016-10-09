@@ -9,9 +9,12 @@ package io.klerch.alexa.state.handler;
 import com.amazon.speech.speechlet.Application;
 import com.amazon.speech.speechlet.Session;
 import com.amazon.speech.speechlet.User;
+import io.klerch.alexa.state.model.AlexaScope;
+import io.klerch.alexa.state.model.AlexaStateObject;
 import io.klerch.alexa.state.model.dummies.Model;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -100,6 +103,17 @@ public abstract class AlexaStateHandlerTest<THandler extends AlexaStateHandler> 
     @Test
     public void readAbsentModel() throws Exception {
         Assert.assertFalse(handler.readModel(Model.class, absentModelId).isPresent());
+    }
+
+    @Test
+    @Ignore
+    public void crudObject() throws Exception {
+        session.getAttributes().clear();
+        final AlexaStateObject stateObject = new AlexaStateObject("id", "value", AlexaScope.SESSION);
+        handler.writeValue(stateObject);
+        assertTrue(session.getAttributes().containsKey("id"));
+
+
     }
 
     @Test
