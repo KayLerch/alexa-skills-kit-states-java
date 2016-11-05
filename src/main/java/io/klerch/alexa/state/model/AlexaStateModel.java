@@ -370,7 +370,7 @@ public abstract class AlexaStateModel {
     }
 
     private boolean hasFieldInScope(final AlexaScope scope) {
-        return getSaveStateFields(scope).stream().findAny().isPresent();
+        return !getSaveStateFields(scope).isEmpty();
     }
 
     static final class AlexaModelBuilder {

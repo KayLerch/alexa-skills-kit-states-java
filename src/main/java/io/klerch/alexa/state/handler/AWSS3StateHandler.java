@@ -7,24 +7,23 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import io.klerch.alexa.state.model.AlexaStateObject;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
+import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URLEncoder;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * As this handler works in the user and application scope it persists all models to an S3 bucket.
@@ -46,7 +45,8 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * Takes the Alexa session. An AWS client for accessing the S3 bucket will make use
      * of all the defaults in your runtime environment in regards to AWS region and credentials. The
      * credentials of this client need permission for getting and putting objects to this bucket.
-     * @param session The Alexa session of your current skill invocation.
+     *
+     * @param session    The Alexa session of your current skill invocation.
      * @param bucketName The bucket where all saved states will go into.
      */
     public AWSS3StateHandler(final Session session, final String bucketName) {
@@ -56,8 +56,9 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     /**
      * Takes the Alexa session and an AWS client set up for the AWS region the given bucket is in. The
      * credentials of this client need permission for getting and putting objects to this bucket.
-     * @param session The Alexa session of your current skill invocation.
-     * @param awsClient An AWS client capable of getting and putting objects to the given bucket.
+     *
+     * @param session    The Alexa session of your current skill invocation.
+     * @param awsClient  An AWS client capable of getting and putting objects to the given bucket.
      * @param bucketName The bucket where all saved states will go into.
      */
     public AWSS3StateHandler(final Session session, final AmazonS3 awsClient, final String bucketName) {
@@ -68,6 +69,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
 
     /**
      * Returns the AWS connection client used to write to and read from files in S3 bucket.
+     *
      * @return AWS connection client to S3
      */
     public AmazonS3 getAwsClient() {
@@ -77,6 +79,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the name of the S3 bucket which is used by this handler to store JSON files with
      * model states.
+     *
      * @return Name of the S3 bucket
      */
     public String getBucketName() {
@@ -117,13 +120,11 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
         // write to session
         super.writeValues(stateObjects);
-
         stateObjects.stream()
                 // select only USER or APPLICATION scoped state objects
-                .filter(stateObject -> AlexaScope.USER.includes(stateObject.getScope()) ||
-                        AlexaScope.APPLICATION.includes(stateObject.getScope()))
+                .filter(stateObject -> stateObject.getScope().isIn(AlexaScope.USER, AlexaScope.APPLICATION))
                 .forEach(stateObject -> {
-                    final String id = stateObject.getKey();
+                    final String id = stateObject.getId();
                     final String value = String.valueOf(stateObject.getValue());
                     final AlexaScope scope = stateObject.getScope();
                     final String filePath = AlexaScope.USER.includes(scope) ?
@@ -137,26 +138,15 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(AlexaStateModel model) throws AlexaStateException {
-        super.removeModel(model);
-        // removeState user-scoped file
-        if (model.hasUserScopedField())
-            awsClient.deleteObject(bucketName, getUserScopedFilePath(model.getClass(), model.getId()));
-        // removeState app-scoped file
-        if (model.hasApplicationScopedField())
-            awsClient.deleteObject(bucketName, getAppScopedFilePath(model.getClass(), model.getId()));
-        log.debug(String.format("Removed state from S3 for '%1$s'.", model));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeValue(final String id) throws AlexaStateException {
-        super.removeValue(id);
-        awsClient.deleteObject(bucketName, getUserScopedFilePath(id));
-        awsClient.deleteObject(bucketName, getAppScopedFilePath(id));
-        log.debug(String.format("Removed value from S3 for '%1$s'.", id));
+    public void removeValues(final Collection<String> ids) throws AlexaStateException {
+        super.removeValues(ids);
+        final List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>();
+        ids.forEach(id -> keys.addAll(Arrays.asList(
+                new DeleteObjectsRequest.KeyVersion(getUserScopedFilePath(id)),
+                new DeleteObjectsRequest.KeyVersion(getAppScopedFilePath(id)))));
+        final DeleteObjectsRequest deleteObjectsRequest = new DeleteObjectsRequest(bucketName)
+                .withKeys(keys);
+        awsClient.deleteObjects(deleteObjectsRequest);
     }
 
     /**
@@ -171,14 +161,6 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
                     getUserScopedFilePath(id) : getAppScopedFilePath(id);
             return awsClient.doesObjectExist(bucketName, filePath);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass) throws AlexaStateException {
-        return this.readModel(modelClass, null);
     }
 
     /**
@@ -207,8 +189,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         if (modelChanged) {
             super.writeModel(model);
             return Optional.of(model);
-        }
-        else {
+        } else {
             // if there was nothing received from S3 and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
             return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
@@ -219,21 +200,29 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException {
-        if (AlexaScope.SESSION.includes(scope)) {
-            return super.readValue(id, scope);
-        }
-        final String filePath = AlexaScope.USER.includes(scope) ?
-                getUserScopedFilePath(id) : getAppScopedFilePath(id);
+    public Map<String, AlexaStateObject> readValues(final Map<String, AlexaScope> idsInScope) throws AlexaStateException {
+        final Map<String, AlexaStateObject> stateObjectMap = new HashMap<>();
+        // first read all the session-scoped items and put to result map
+        stateObjectMap.putAll(super.readValues(idsInScope));
 
-        try {
-            return getS3FileContentsAsString(filePath)
-                    .map(fileContents -> new AlexaStateObject(id, fileContents, scope));
-        }
-        catch(final AlexaStateException e) {
-            // we are fine with an exception likely caused by file (state) not exist
-            return Optional.empty();
-        }
+        idsInScope.forEach((id, scope) -> {
+            if (scope.isIn(AlexaScope.USER, AlexaScope.APPLICATION)) {
+                final String filePath = AlexaScope.USER.includes(scope) ?
+                        getUserScopedFilePath(id) : getAppScopedFilePath(id);
+                try {
+                    // get S3 file
+                    getS3FileContentsAsString(filePath)
+                            // wrap its contents in state object
+                            .map(fileContents -> new AlexaStateObject(id, fileContents, scope))
+                            // add to result map
+                            .ifPresent(stateObject -> stateObjectMap.putIfAbsent(id, stateObject));
+                } catch (final AlexaStateException | AmazonS3Exception e) {
+                    // we are fine with an exception likely caused by file (state) not exists
+                    log.warn("Could not read from '" + filePath + "'.", e);
+                }
+            }
+        });
+        return stateObjectMap;
     }
 
     private boolean fromS3FileContentsToModel(final AlexaStateModel alexaStateModel, final String id, final AlexaScope scope) throws AlexaStateException {
@@ -245,6 +234,9 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
 
     private Optional<String> getS3FileContentsAsString(final String filePath) throws AlexaStateException {
         final S3Object file = awsClient.getObject(bucketName, filePath);
+        if (file == null) {
+            return Optional.empty();
+        }
         final BufferedReader reader = new BufferedReader(new InputStreamReader(file.getObjectContent()));
         final StringBuilder sb = new StringBuilder();
         String line;
@@ -261,20 +253,12 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
         return fileContents.isEmpty() ? Optional.empty() : Optional.of(fileContents);
     }
 
-    private <TModel extends AlexaStateModel> String getUserScopedFilePath(final Class<TModel> modelClass) {
-        return getUserScopedFilePath(modelClass, null);
-    }
-
     private <TModel extends AlexaStateModel> String getUserScopedFilePath(final Class<TModel> modelClass, final String id) {
         return session.getUser().getUserId() + "/" + TModel.getAttributeKey(modelClass, id) + "." + fileExtension;
     }
 
     private String getUserScopedFilePath(final String id) {
         return session.getUser().getUserId() + "/" + id + "." + fileExtension;
-    }
-
-    private <TModel extends AlexaStateModel> String getAppScopedFilePath(final Class<TModel> modelClass) {
-        return getAppScopedFilePath(modelClass, null);
     }
 
     private <TModel extends AlexaStateModel> String getAppScopedFilePath(final Class<TModel> modelClass, final String id) {

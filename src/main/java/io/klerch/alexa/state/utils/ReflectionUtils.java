@@ -19,8 +19,7 @@ public class ReflectionUtils {
      * @return the reflected method. Is null if method was not found in the given object
      */
     public static Method getGetter(final Object o, final String fieldName) {
-        Optional<Method> method = getMethodWithPrefix(o, fieldName, "get");
-        return method.orElse(null);
+        return getMethodWithPrefix(o, fieldName, "get").orElse(null);
     }
 
     /**
@@ -31,8 +30,7 @@ public class ReflectionUtils {
      * @return the reflected method. Is null if method was not found in the given object
      */
     public static Method getSetter(final Object o, final String fieldName) {
-        Optional<Method> method = getMethodWithPrefix(o, fieldName, "set");
-        return method.orElse(null);
+        return getMethodWithPrefix(o, fieldName, "set").orElse(null);
     }
 
     /**

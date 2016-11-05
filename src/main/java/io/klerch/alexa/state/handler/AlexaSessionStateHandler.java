@@ -16,6 +16,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * As this handler works in the session scope it persists all models to the attributes of an associate Alexa Session object.
@@ -121,9 +122,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
         Validate.notNull(stateObjects, "List of state objects to write to persistence store must not be null.");
         stateObjects.stream()
                 .filter(o -> AlexaScope.SESSION.includes(o.getScope()))
-                .forEach(stateObject -> {
-                    session.setAttribute(stateObject.getKey(), stateObject.getValue());
-                });
+                .forEach(stateObject -> session.setAttribute(stateObject.getId(), stateObject.getValue()));
     }
 
     /**
@@ -132,7 +131,14 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     public void removeModel(final AlexaStateModel model) throws AlexaStateException {
         Validate.notNull(model, "Model to be removed must not be null.");
-        removeValue(model.getAttributeKey());
+        removeModels(Collections.singletonList(model));
+    }
+
+    @Override
+    public void removeModels(Collection<AlexaStateModel> models) throws AlexaStateException {
+        Validate.notNull(models, "Collection of models to be removed must not be null.");
+        final List<String> ids = models.stream().map(AlexaStateModel::getAttributeKey).collect(Collectors.toList());
+        removeValues(ids);
     }
 
     /**
@@ -140,9 +146,13 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public void removeValue(final String id) throws AlexaStateException {
-        Validate.notBlank(id, "Id of object to remove must not be blank.");
-        session.removeAttribute(id);
-        log.debug(String.format("Removed state from session attributes for '%1$s'.", id));
+        removeValues(Collections.singletonList(id));
+    }
+
+    @Override
+    public void removeValues(final Collection<String> ids) throws AlexaStateException {
+        Validate.notNull(ids, "Collection of ids whose values to be removed must not be null.");
+        ids.forEach(session::removeAttribute);
     }
 
     /**
@@ -210,8 +220,24 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
+    public <TModel extends AlexaStateModel> boolean exists(final Class<TModel> modelClass, final String id) throws AlexaStateException {
+        return exists(TModel.getAttributeKey(modelClass, id));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public <TModel extends AlexaStateModel> boolean exists(final Class<TModel> modelClass, final AlexaScope scope) throws AlexaStateException {
         return exists(TModel.getAttributeKey(modelClass), scope);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public <TModel extends AlexaStateModel> boolean exists(final Class<TModel> modelClass, final String id, final AlexaScope scope) throws AlexaStateException {
+        return exists(TModel.getAttributeKey(modelClass, id), scope);
     }
 
     /**
@@ -227,7 +253,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public boolean exists(final String id, final AlexaScope scope) throws AlexaStateException {
-        return AlexaScope.SESSION.includes(scope) && session.getAttributes().containsKey(id);
+        return readValue(id, scope).isPresent();
     }
 
     /**
@@ -243,6 +269,45 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      */
     @Override
     public Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException {
-        return exists(id, scope) ? Optional.of(new AlexaStateObject(id, session.getAttribute(id), scope)) : Optional.empty();
+        final Map<String, AlexaStateObject> result = readValues(Collections.singletonList(id), scope);
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(id));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, AlexaStateObject> readValues(final Collection<String> ids) throws AlexaStateException {
+        return readValues(ids, AlexaScope.SESSION);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, AlexaStateObject> readValues(final Collection<String> ids, final AlexaScope scope) throws AlexaStateException {
+        final Map<String, AlexaScope> idsInScope = new HashMap<>();
+        ids.forEach(id -> idsInScope.putIfAbsent(id, scope));
+        return readValues(idsInScope);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, AlexaStateObject> readValues(Map<String, AlexaScope> idsInScope) throws AlexaStateException {
+        final Map<String, AlexaStateObject> stateObjectMap = new HashMap<>();
+        idsInScope.forEach((k,v) -> {
+            // do for session-scoped keys only
+            if (existsInSession(k, v)) {
+                // read from session and wrap value in state object
+                stateObjectMap.putIfAbsent(k, new AlexaStateObject(k, session.getAttribute(k), v));
+            }
+        });
+        return stateObjectMap;
+    }
+
+    private boolean existsInSession(final String id, final AlexaScope scope) {
+        return AlexaScope.SESSION.includes(scope) && session.getAttributes().containsKey(id);
     }
 }

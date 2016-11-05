@@ -1,6 +1,6 @@
 /**
  * Made by Kay Lerch (https://twitter.com/KayLerch)
- *
+ * <p>
  * Attached license applies.
  * This library is licensed under GNU GENERAL PUBLIC LICENSE Version 3 as of 29 June 2007
  */
@@ -8,80 +8,83 @@ package io.klerch.alexa.state.handler;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.*;
-import io.klerch.alexa.state.model.dummies.Model;
+import io.klerch.alexa.state.model.AlexaScope;
+import io.klerch.alexa.state.utils.AlexaStateException;
 import org.junit.Test;
-import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 
 public class AWSDynamoStateHandlerTest extends AlexaStateHandlerTest<AWSDynamoStateHandler> {
+    static String tableName = "tableName";
 
     @Override
-    public AWSDynamoStateHandler getHandler() {
-        final AmazonDynamoDBClient awsClient = mock(AmazonDynamoDBClient.class);
-        handler = new AWSDynamoStateHandler(session, awsClient);
-
-        final String tableName = handler.getTableName();
-
-        // prepare static read return from DynamoDB without given model-Id
-        final String jsonApp = "{\"id\":null,\"sampleApplication\":true}";
-        final String jsonUser = "{\"id\":null,\"sampleUser\":\"sampleUser\"}";
-
-        final Map<String, AttributeValue> mapUser = new HashMap<>();
-        mapUser.put(handler.getAttributeKeyState(), new AttributeValue(jsonUser));
-
-        final Map<String, AttributeValue> mapApp = new HashMap<>();
-        mapApp.put(handler.getAttributeKeyState(), new AttributeValue(jsonApp));
-
-        final GetItemResult resultUser = new GetItemResult().withItem(mapUser);
-        final GetItemResult resultApp = new GetItemResult().withItem(mapApp);
-
-        Mockito.when(awsClient.getItem(tableName, handler.getUserScopedKeyAttributes(Model.class)))
-                .thenReturn(resultUser);
-        Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class)))
-                .thenReturn(resultApp);
-
-        // prepare static read return from DynamoDB with given model-Id
-
-        final String jsonAppId = "{\"id\":\"" + modelId + "\",\"sampleApplication\":true}";
-        final String jsonUserId = "{\"id\":\"" + modelId + "\",\"sampleUser\":\"sampleUser\"}";
-
-        final Map<String, AttributeValue> mapUserId = new HashMap<>();
-        mapUserId.put(handler.getAttributeKeyState(), new AttributeValue(jsonUserId));
-
-        final Map<String, AttributeValue> mapAppId = new HashMap<>();
-        mapAppId.put(handler.getAttributeKeyState(), new AttributeValue(jsonAppId));
-
-        final GetItemResult resultUserId = new GetItemResult().withItem(mapUserId);
-        final GetItemResult resultAppId = new GetItemResult().withItem(mapAppId);
-
-        // mock get items for model with id
-        Mockito.when(awsClient.getItem(tableName, handler.getUserScopedKeyAttributes(Model.class, modelId)))
-                .thenReturn(resultUserId);
-        Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class, modelId)))
-                .thenReturn(resultAppId);
-
-        // mock get items for absent model (with empty response)
-        Mockito.when(awsClient.getItem(tableName, handler.getUserScopedKeyAttributes(Model.class, absentModelId)))
-                .thenReturn(new GetItemResult());
-        Mockito.when(awsClient.getItem(tableName, handler.getAppScopedKeyAttributes(Model.class, absentModelId)))
-                .thenReturn(new GetItemResult());
-
-        // on create table call always return table in ACTIVE state
-        final TableDescription tableDescription = new TableDescription().withTableName(tableName).withTableStatus(TableStatus.ACTIVE);
-        final CreateTableResult createResult = new CreateTableResult().withTableDescription(tableDescription);
-        Mockito.when(awsClient.createTable(any(CreateTableRequest.class))).thenReturn(createResult);
-
-        // mock describe table request to always return a table whose name is
-        final DescribeTableResult describeResult = new DescribeTableResult().withTable(tableDescription);
-        Mockito.when(awsClient.describeTable(any(DescribeTableRequest.class))).thenReturn(describeResult);
-
-        return handler;
+    public AWSDynamoStateHandler givenHandler() throws Exception {
+        final AmazonDynamoDBClient awsClient = mock(AmazonDynamoDBClient.class, new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                if (invocation.getMethod().getName().equals("createTable")) {
+                    // on create table call always return table in ACTIVE state
+                    final TableDescription tableDescription = new TableDescription().withTableName(tableName).withTableStatus(TableStatus.ACTIVE);
+                    return new CreateTableResult().withTableDescription(tableDescription);
+                }
+                if (invocation.getMethod().getName().equals("describeTable")) {
+                    // mock describe table request to always return a table whose name is tableName
+                    final TableDescription tableDescription = new TableDescription().withTableName(tableName).withTableStatus(TableStatus.ACTIVE);
+                    return new DescribeTableResult().withTable(tableDescription);
+                }
+                if (invocation.getMethod().getName().equals("batchGetItem")) {
+                    final List<Map<String, AttributeValue>> resultItems = new ArrayList<>();
+                    final BatchGetItemRequest getItemRequest = invocation.getArgumentAt(0, BatchGetItemRequest.class);
+                    // go through all request items
+                    getItemRequest.getRequestItems().forEach((tableName, keysAndAttributes) -> {
+                        // go through keys of a request
+                        keysAndAttributes.getKeys().forEach(attributes -> {
+                            // obtain scope the state of an object is requested
+                            final AlexaScope scope = attributes.get(AWSDynamoStateHandler.pkUser).getS().equals(AWSDynamoStateHandler.attributeValueApp) ? AlexaScope.APPLICATION : AlexaScope.USER;
+                            final String modelRef = attributes.get(AWSDynamoStateHandler.pkModel).getS();
+                            // prepare result item which takes over the primary keys of the request
+                            final Map<String, AttributeValue> map = new HashMap<>();
+                            map.put(AWSDynamoStateHandler.pkUser, attributes.get(AWSDynamoStateHandler.pkUser));
+                            map.put(AWSDynamoStateHandler.pkModel, attributes.get(AWSDynamoStateHandler.pkModel));
+                            // if modelRef is equal to test modelIds then a single state object is requested
+                            // cause models would have been requested with attributeKey which contains the qualified class name
+                            if (Arrays.asList(modelId, modelId2).contains(modelRef)) {
+                                // always return the static value given by the parent
+                                map.put(handler.getAttributeKeyState(), new AttributeValue(stateModelValue));
+                                // add result item
+                                resultItems.add(map);
+                            } else {
+                                // extract modelId
+                                final String id = modelRef.contains(":") ? modelRef.substring(modelRef.lastIndexOf(":") + 1) : null;
+                                // ensure modelId is not absent modelId
+                                if (!absentModelId.equals(id) && !absentModelId.equals(modelRef)) {
+                                    // json payload of requested model
+                                    try {
+                                        final String payload = givenModel(id).toJSON(scope);
+                                        map.put(handler.getAttributeKeyState(), new AttributeValue(payload));
+                                        // add result item
+                                        resultItems.add(map);
+                                    } catch (AlexaStateException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+                        });
+                    });
+                    final BatchGetItemResult batchResult = new BatchGetItemResult();
+                    batchResult.addResponsesEntry(tableName, resultItems);
+                    return batchResult;
+                }
+                return null;
+            }
+        });
+        // return handler with mocked Dynamo client
+        return new AWSDynamoStateHandler(session, awsClient, tableName);
     }
 
     @Test
@@ -99,19 +102,22 @@ public class AWSDynamoStateHandlerTest extends AlexaStateHandlerTest<AWSDynamoSt
         final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session);
         assertNotNull(handler.getTableName());
 
-        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, "tableName");
-        assertEquals("tableName", handler2.getTableName());
+        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, tableName);
+        assertEquals(tableName, handler2.getTableName());
     }
 
     @Test
     public void getAwsClientAndTableName() throws Exception {
-        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session);
-        assertNotNull(handler.getTableName());
-        assertNotNull(handler.getAwsClient());
-
         final AmazonDynamoDBClient awsClient = new AmazonDynamoDBClient();
-        final AWSDynamoStateHandler handler2 = new AWSDynamoStateHandler(session, awsClient, "tableName");
-        assertEquals(awsClient, handler2.getAwsClient());
-        assertEquals("tableName", handler2.getTableName());
+        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session, awsClient, tableName);
+        assertEquals(awsClient, handler.getAwsClient());
+        assertEquals(tableName, handler.getTableName());
+    }
+
+    @Test
+    public void getAwsClientAndTableNameAndCapacity() throws Exception {
+        final AmazonDynamoDBClient awsClient = new AmazonDynamoDBClient();
+        final AWSDynamoStateHandler handler = new AWSDynamoStateHandler(session, awsClient, 100L, 200L);
+        assertEquals(awsClient, handler.getAwsClient());
     }
 }

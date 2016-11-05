@@ -12,8 +12,10 @@ import com.amazonaws.services.iot.model.CreateThingResult;
 import com.amazonaws.services.iot.model.ListThingsResult;
 import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
+import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowResult;
+import com.amazonaws.services.s3.model.S3Object;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.dummies.Model;
@@ -22,14 +24,16 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.*;
 
 public class AWSIotStateHandlerTest extends AlexaStateHandlerTest<AWSIotStateHandler> {
     @Override
-    public AWSIotStateHandler getHandler() {
+    public AWSIotStateHandler givenHandler() {
         // mock the AWS connection client for creating and listing things
         final AWSIot iotClient = Mockito.mock(AWSIotClient.class, new Answer() {
             @Override
@@ -47,15 +51,31 @@ public class AWSIotStateHandlerTest extends AlexaStateHandlerTest<AWSIotStateHan
             @Override
             public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
                 if (invocationOnMock.getMethod().getName().equals("getThingShadow")) {
-                    // build shadow JSON with reported state for Model with one
-                    // instance having an id and another having no id
-                    final String keyWithId = AlexaStateModel.getAttributeKey(Model.class, modelId);
-                    final String keyWithoutId = AlexaStateModel.getAttributeKey(Model.class, null);
-                    final String jsonWithId = "\"" + keyWithId + "\":{\"id\":\"" + modelId + "\",\"sampleApplication\":true,\"sampleUser\":\"sampleUser\"}";
-                    final String jsonWithoutId = "\"" + keyWithoutId + "\":{\"id\":null,\"sampleApplication\":true,\"sampleUser\":\"sampleUser\"}";
-                    final String jsonShadow = "{\"state\":{\"reported\":{" + jsonWithId + ", " + jsonWithoutId + "}}}";
-                    final ByteBuffer payload = Charset.forName("UTF-8").encode(jsonShadow);
-                    return new GetThingShadowResult().withPayload(payload);
+                    // just a dummy handler to get the generated thing shadow names
+                    final AWSIotStateHandler dummyHandler = new AWSIotStateHandler(session);
+                    // keys for models
+                    final String keyModel1 = AlexaStateModel.getAttributeKey(Model.class, modelId);
+                    final String keyModel2 = AlexaStateModel.getAttributeKey(Model.class, modelId2);
+                    final String keyModelSingleton = AlexaStateModel.getAttributeKey(Model.class, null);
+                    final String thingName = invocationOnMock.getArgumentAt(0, GetThingShadowRequest.class).getThingName();
+                    // this indicates method was called to get the application shadow
+                    if (thingName.equals(dummyHandler.getAppScopedThingName())) {
+                        final String jsonWithModel1 = "\"" + keyModel1 + "\":" + givenModel(modelId).toJSON(AlexaScope.APPLICATION);
+                        final String jsonWithModel2 = "\"" + keyModel2 + "\":" + givenModel(modelId2).toJSON(AlexaScope.APPLICATION);
+                        final String jsonWithModelSingleton = "\"" + keyModelSingleton + "\":" + givenModel(null).toJSON(AlexaScope.APPLICATION);
+                        final String jsonShadow = "{\"state\":{\"reported\":{" + jsonWithModel1 + ", " + jsonWithModel2 + ", " + jsonWithModelSingleton + "}}}";
+                        final ByteBuffer payload = Charset.forName("UTF-8").encode(jsonShadow);
+                        return new GetThingShadowResult().withPayload(payload);
+                    }
+                    // otherwise it must have been a call to read from user-shadow
+                    else if (thingName.equals(dummyHandler.getUserScopedThingName())) {
+                        final String jsonWithModel1 = "\"" + keyModel1 + "\":" + givenModel(modelId).toJSON(AlexaScope.USER);
+                        final String jsonWithModel2 = "\"" + keyModel2 + "\":" + givenModel(modelId2).toJSON(AlexaScope.USER);
+                        final String jsonWithModelSingleton = "\"" + keyModelSingleton + "\":" + givenModel(null).toJSON(AlexaScope.USER);
+                        final String jsonShadow = "{\"state\":{\"reported\":{" + jsonWithModel1 + ", " + jsonWithModel2 + ", " + jsonWithModelSingleton + "}}}";
+                        final ByteBuffer payload = Charset.forName("UTF-8").encode(jsonShadow);
+                        return new GetThingShadowResult().withPayload(payload);
+                    }
                 }
                 if (invocationOnMock.getMethod().getName().equals("updateThingShadow")) return new UpdateThingShadowResult();
                 return null;

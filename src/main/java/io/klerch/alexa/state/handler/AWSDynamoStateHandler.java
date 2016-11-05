@@ -18,6 +18,7 @@ import io.klerch.alexa.state.model.AlexaScope;
 import org.apache.log4j.Logger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * As this handler works in the user and application scope it persists all models to a AWS DynamoDB table.
@@ -33,10 +34,16 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     private final long readCapacityUnits;
     private final long writeCapacityUnits;
     private static final String tablePrefix = "alexa-";
-    private static final String attributeValueApp = "__application";
-    private static final String pkModel = "model-class";
-    private static final String pkUser = "amzn-user-id";
+    // context value for the primary index for each item saved in application scope
+    static final String attributeValueApp = "__application";
+    // column-name for primary index of the dynamo table to store the context key (mostly user-id)
+    static final String pkUser = "amzn-user-id";
+    // column-name for secondary index of the dynamo table to store the object identifier (aka id)
+    static final String pkModel = "model-class";
+    // column-name for table attribute used to store the state value (model JSON, single value)
     private static final String attributeKeyState = "state";
+    // flag that indicates if existence of table is approved to avoid multiple checks in
+    // dynamodb in single instance lifetime
     private Boolean tableExistenceApproved = false;
 
     /**
@@ -47,6 +54,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * The table created consist of a hash-key and a sort-key.
      * If you don't want this handler to auto-create a table provide the name of an existing table in DynamoDB
      * in another constructor.
+     *
      * @param session The Alexa session of your current skill invocation.
      */
     public AWSDynamoStateHandler(final Session session) {
@@ -61,7 +69,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * The table created consist of a hash-key and a sort-key.
      * If you don't want this handler to auto-create a table provide the name of an existing table in DynamoDB
      * in another constructor.
-     * @param session The Alexa session of your current skill invocation.
+     *
+     * @param session   The Alexa session of your current skill invocation.
      * @param awsClient An AWS client capable of creating DynamoDB table plus reading, writing and removing items.
      */
     public AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient) {
@@ -75,7 +84,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * of name amzn-user-id. The option of providing an existing table to this handler prevents it from checking its existence
      * which might end up with a better performance. You also don't need to provide permission of creating a DynamoDB table to
      * the credentials of the given AWS client.
-     * @param session The Alexa session of your current skill invocation.
+     *
+     * @param session   The Alexa session of your current skill invocation.
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
     public AWSDynamoStateHandler(final Session session, final String tableName) {
@@ -89,7 +99,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * of name amzn-user-id. The option of providing an existing table to this handler prevents it from checking its existence
      * which might end up with a better performance. You also don't need to provide permission of creating a DynamoDB table to
      * the credentials of the given AWS client.
-     * @param session The Alexa session of your current skill invocation.
+     *
+     * @param session   The Alexa session of your current skill invocation.
      * @param awsClient An AWS client capable of reading, writing and removing items of the given DynamoDB table.
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
@@ -105,9 +116,10 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * The table created consist of a hash-key and a sort-key.
      * If you don't want this handler to auto-create a table provide the name of an existing table in DynamoDB
      * in another constructor.
-     * @param session The Alexa session of your current skill invocation.
-     * @param awsClient An AWS client capable of creating DynamoDB table plus reading, writing and removing items.
-     * @param readCapacityUnits Read capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
+     *
+     * @param session            The Alexa session of your current skill invocation.
+     * @param awsClient          An AWS client capable of creating DynamoDB table plus reading, writing and removing items.
+     * @param readCapacityUnits  Read capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      * @param writeCapacityUnits Write capacity for the table which is applied only on creation of table (what happens at the very first read or write operation with this handler)
      */
     public AWSDynamoStateHandler(final Session session, final AmazonDynamoDB awsClient, final long readCapacityUnits, final long writeCapacityUnits) {
@@ -126,6 +138,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
 
     /**
      * Returns the AWS connection client used to write to and read from items in DynamoDB table.
+     *
      * @return AWS connection client to DynamoDB
      */
     public AmazonDynamoDB getAwsClient() {
@@ -135,9 +148,10 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the name of the DynamoDB table which is used by this handler to store items with
      * model states.
+     *
      * @return name of the DynamoDB table
      */
-    public String getTableName() {
+    String getTableName() {
         return this.tableName;
     }
 
@@ -150,11 +164,15 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         super.writeModels(models);
 
         final List<WriteRequest> items = new ArrayList<>();
+        // go for each model asked to be saved
         for (final AlexaStateModel model : models) {
-            getItems(model).forEach(item -> {
-                items.add(new WriteRequest(new PutRequest(item)));
-            });
+            // convert model to a dynamo-item having in place all attributes
+            getItems(model, true).forEach(item ->
+                    // wrap each model in a write-request and collect all of them
+                    items.add(new WriteRequest(new PutRequest(item)))
+            );
         }
+        // write batch of write-request to dynamo
         writeItemsToDb(items);
     }
 
@@ -167,20 +185,23 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         super.writeValues(stateObjects);
 
         final List<WriteRequest> items = new ArrayList<>();
-
         stateObjects.stream()
                 // select only USER or APPLICATION scoped state objects
-                .filter(stateObject -> AlexaScope.USER.includes(stateObject.getScope()) ||
-                        AlexaScope.APPLICATION.includes(stateObject.getScope()))
+                .filter(stateObject -> stateObject.getScope().isIn(AlexaScope.USER, AlexaScope.APPLICATION))
+                // go for each state object to be saved
                 .forEach(stateObject -> {
-                    final String id = stateObject.getKey();
+                    final String id = stateObject.getId();
                     final Object value = stateObject.getValue();
                     final AlexaScope scope = stateObject.getScope();
+                    // set primary keys which differ depending on the scope to save value for
                     final Map<String, AttributeValue> item = AlexaScope.USER.includes(scope) ?
                             getUserScopedKeyAttributes(id) : getAppScopedKeyAttributes(id);
+                    // add an attribute which holds the actual value
                     item.put(attributeKeyState, new AttributeValue(String.valueOf(value)));
+                    // wrap each value in a write-request and collect all of them
                     items.add(new WriteRequest(new PutRequest(item)));
                 });
+        // write batch of write-requests to dynamo
         writeItemsToDb(items);
     }
 
@@ -188,24 +209,16 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(final AlexaStateModel model) throws AlexaStateException {
-        super.removeModel(model);
-        // removeState user-scoped item
-        awsClient.deleteItem(tableName, getUserScopedKeyAttributes(model.getClass(), model.getId()));
-        // removeState app-scoped item
-        awsClient.deleteItem(tableName, getAppScopedKeyAttributes(model.getClass(), model.getId()));
-        log.debug(String.format("Removed state from DynamoDB for '%1$s'.", model));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void removeValue(final String id) throws AlexaStateException {
-        super.removeValue(id);
-        awsClient.deleteItem(tableName, getUserScopedKeyAttributes(id));
-        awsClient.deleteItem(tableName, getAppScopedKeyAttributes(id));
-        log.debug(String.format("Removed value from DynamoDB for '%1$s'.", id));
+    public void removeValues(final Collection<String> ids) throws AlexaStateException {
+        super.removeValues(ids);
+        final List<WriteRequest> items = new ArrayList<>();
+        ids.forEach(id -> {
+            // removeState user-scoped item
+            items.add(new WriteRequest(new DeleteRequest(getUserScopedKeyAttributes(id))));
+            // removeState app-scoped item
+            items.add(new WriteRequest(new DeleteRequest(getAppScopedKeyAttributes(id))));
+        });
+        writeItemsToDb(items);
     }
 
     /**
@@ -220,7 +233,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         }
     }
 
-    public String getAttributeKeyState() {
+    String getAttributeKeyState() {
         return attributeKeyState;
     }
 
@@ -234,88 +247,97 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         // create new model with given id. for now we assume a model exists for this id. we find out by
         // querying dynamodb in the following lines. only if this is true model will be written back to session
         final TModel model = modelSession.orElse(createModel(modelClass, id));
-        // must ensure table is existing in case there are user- or app-scoped field awaiting values from db
-        if (model.hasUserScopedField() || model.hasApplicationScopedField()) {
-            ensureTableExists();
+        // get read-request items (could be two - one for user-scoped item, one for app-scoped item)
+        final List<Map<String, AttributeValue>> readRequests = getItems(model, false);
+        if (!readRequests.isEmpty()) {
+            // calculate attribute key for model
+            final String attributeKey = TModel.getAttributeKey(modelClass, id);
+            // go through resultset
+            for (final Map<String, AttributeValue> item : readItemsFromDb(readRequests)) {
+                if (item.get(pkModel).getS().equals(attributeKey)) {
+                    model.fromJSON(item.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS());
+                    // write back user and app-scoped fields to session
+                    super.writeModel(model);
+                    return Optional.of(model);
+                }
+            }
         }
-        // we need to remember if there will be something from dynamodb to be written to the model
-        // in order to write those values back to the session at the end of this method
-        Boolean modelChanged = false;
-        // and if there are user-scoped fields ...
-        if (model.hasUserScopedField() && readModelFromDb(model, AlexaScope.USER)) {
-            log.debug(String.format("Values applied from DynamoDB to user-scoped fields of model '%1$s'.", model));
-            modelChanged = true;
-        }
-        // and if there are app-scoped fields ...
-        if (model.hasApplicationScopedField() && readModelFromDb(model, AlexaScope.APPLICATION)) {
-            log.debug(String.format("Values applied from DynamoDB to application-scoped fields of model '%1$s'.", model));
-            modelChanged = true;
-        }
-        // so if model changed from within something out of dynamodb we want this to be in the speechlet as well
-        // this gives you access to user- and app-scoped attributes throughout a session without reading from db over and over again
-        if (modelChanged) {
-            super.writeModel(model);
-            return Optional.of(model);
-        } else {
-            log.debug(String.format("No state for application- or user-scoped fields of model '%1$s' found in DynamoDB.", model));
-            // if there was nothing received from dynamo and there is nothing to return from session
-            // then its not worth return the model. better indicate this model does not exist
-            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
-        }
+        log.debug(String.format("No state for application- or user-scoped fields of model '%1$s' found in DynamoDB.", model));
+        // if there was nothing received from dynamo and there is nothing to return from session
+        // then its not worth to return the model. better indicate this model does not exist
+        return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Optional<AlexaStateObject> readValue(final String id, final AlexaScope scope) throws AlexaStateException {
-        if (AlexaScope.SESSION.includes(scope)) {
-            return super.readValue(id, scope);
-        }
-        return readValueFromDb(id, scope).map(value -> new AlexaStateObject(id, value, scope));
+    public Map<String, AlexaStateObject> readValues(final Map<String, AlexaScope> idsInScope) throws AlexaStateException {
+        final Map<String, AlexaStateObject> stateObjectMap = new HashMap<>();
+        // first read all the session-scoped items and put to result map
+        stateObjectMap.putAll(super.readValues(idsInScope));
+        // build a list of attribute-sets of individual to-be-read items
+        final List<Map<String, AttributeValue>> attributesList = idsInScope.entrySet().stream()
+                // only do this for user and application scoped ids
+                .filter(entry -> entry.getValue().isIn(AlexaScope.USER, AlexaScope.APPLICATION))
+                // get the attribute-set according to the given scope
+                .map(entry -> AlexaScope.USER.includes(entry.getValue()) ?
+                        getUserScopedKeyAttributes(entry.getKey()) : getAppScopedKeyAttributes(entry.getKey()))
+                .collect(Collectors.toList());
+        // go through result and transform result-item to state object
+        readItemsFromDb(attributesList).forEach(item -> {
+            final String id = item.get(pkModel).getS();
+            stateObjectMap.putIfAbsent(id, new AlexaStateObject(id, item.get(attributeKeyState), idsInScope.get(id)));
+        });
+        return stateObjectMap;
     }
 
-    private List<Map<String, AttributeValue>> getItems(final AlexaStateModel model) throws AlexaStateException {
+    private List<Map<String, AttributeValue>> getItems(final AlexaStateModel model, final boolean withState) throws AlexaStateException {
         final List<Map<String, AttributeValue>> items = new ArrayList<>();
-        boolean hasAppScopedFields = model.getSaveStateFields(AlexaScope.APPLICATION).stream().findAny().isPresent();
-        boolean hasUserScopedFields = model.getSaveStateFields(AlexaScope.USER).stream().findAny().isPresent();
-
-        if (hasUserScopedFields) {
+        if (model.hasUserScopedField()) {
             // add primary keys as attributes
             final Map<String, AttributeValue> attributes = getUserScopedKeyAttributes(model.getClass(), model.getId());
-            // add json as attribute
-            final String jsonState = model.toJSON(AlexaScope.USER);
-            attributes.put(attributeKeyState, new AttributeValue(jsonState));
-            // write all user-scoped attributes to table
-            items.add(attributes);
+            if (withState) {
+                // add json as attribute
+                final String jsonState = model.toJSON(AlexaScope.USER);
+                attributes.put(attributeKeyState, new AttributeValue(jsonState));
+                // write all user-scoped attributes to table
+                items.add(attributes);
+            }
         }
-        if (hasAppScopedFields) {
+        if (model.hasApplicationScopedField()) {
             // add primary keys as attributes
             final Map<String, AttributeValue> attributes = getAppScopedKeyAttributes(model.getClass(), model.getId());
-            // add json as attribute
-            final String jsonState = model.toJSON(AlexaScope.APPLICATION);
-            attributes.put(attributeKeyState, new AttributeValue(jsonState));
-            // write all app-scoped attributes to table
-            items.add(attributes);
+            if (withState) {
+                // add json as attribute
+                final String jsonState = model.toJSON(AlexaScope.APPLICATION);
+                attributes.put(attributeKeyState, new AttributeValue(jsonState));
+                // write all app-scoped attributes to table
+                items.add(attributes);
+            }
         }
         return items;
-    }
-
-    private boolean readModelFromDb(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
-        final String json = readValueFromDb(model.getAttributeKey(), scope).orElse("{}");
-        // extract values from json and assign it to model
-        return model.fromJSON(json, scope);
     }
 
     private Optional<String> readValueFromDb(final String id, final AlexaScope scope) throws AlexaStateException {
         // read from item with scoped model
         final Map<String, AttributeValue> key = AlexaScope.APPLICATION.includes(scope) ? getAppScopedKeyAttributes(id) : getUserScopedKeyAttributes(id);
-        final GetItemResult awsResult = awsClient.getItem(tableName, key);
-        final Map<String, AttributeValue> attributes = awsResult.getItem();
-        // if no item found then return false
-        if (attributes == null || attributes.isEmpty()) return Optional.empty();
+        final List<Map<String, AttributeValue>> result = readItemsFromDb(Collections.singletonList(key));
         // read state as json-string
-        return Optional.of(attributes.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS());
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0).getOrDefault(attributeKeyState, new AttributeValue("{}")).getS());
+    }
+
+    private List<Map<String, AttributeValue>> readItemsFromDb(final List<Map<String, AttributeValue>> keys) throws AlexaStateException {
+        if (keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+        ensureTableExists();
+        final KeysAndAttributes keysAndAttributes = new KeysAndAttributes().withKeys(keys);
+        final Map<String, KeysAndAttributes> requestItems = new HashMap<>();
+        requestItems.put(tableName, keysAndAttributes);
+        final BatchGetItemRequest getItemRequest = new BatchGetItemRequest().withRequestItems(requestItems);
+        final BatchGetItemResult result = awsClient.batchGetItem(getItemRequest);
+        return result.getResponses().getOrDefault(tableName, Collections.emptyList());
     }
 
     private void writeItemsToDb(final List<WriteRequest> items) throws AlexaStateException {
@@ -323,7 +345,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             // if there is something which needs to be written to dynamo db ensure table exists
             ensureTableExists();
             final BatchWriteItemRequest writeItemRequest = new BatchWriteItemRequest();
-            writeItemRequest.addRequestItemsEntry("key", items);
+            writeItemRequest.addRequestItemsEntry(tableName, items);
             awsClient.batchWriteItem(writeItemRequest);
         }
     }
@@ -333,14 +355,14 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         // for reason of least privileges on used AWS credentials or better performance
         if (!tableExistenceApproved || !tableExists()) {
             final ArrayList<AttributeDefinition> attributeDefinitions = new ArrayList<>();
-            // describe keys
+            // describe keys (both will be Strings)
             attributeDefinitions.add(new AttributeDefinition()
                     .withAttributeName(pkUser)
                     .withAttributeType("S"));
             attributeDefinitions.add(new AttributeDefinition()
                     .withAttributeName(pkModel)
                     .withAttributeType("S"));
-            // define keys
+            // define keys with name and type
             final ArrayList<KeySchemaElement> keySchema = new ArrayList<>();
             keySchema.add(new KeySchemaElement()
                     .withAttributeName(pkUser)
@@ -363,20 +385,16 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                 // this could take up to possible ten minutes so be sure to run this code once before publishing your skill ;)
                 try {
                     TableUtils.waitUntilActive(awsClient, awsRequest.getTableName());
-                } catch (InterruptedException e) {
-                    final String error = String.format("Could not create DynamoDb-Table '%1$s' before writing state", tableName);
-                    log.debug(error);
-                    throw AlexaStateException.create(error).withCause(e).withHandler(this).build();
+                } catch (final InterruptedException e) {
+                    final String message = String.format("Could not create DynamoDb-Table '%1$s' before writing state", tableName);
+                    log.error(message, e);
+                    throw AlexaStateException.create(message).withCause(e).withHandler(this).build();
                 }
             }
         }
     }
 
-    <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass) {
-        return getUserScopedKeyAttributes(modelClass, null);
-    }
-
-    <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
+    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getUserScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         return getUserScopedKeyAttributes(TModel.getAttributeKey(modelClass, id));
     }
 
@@ -387,11 +405,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         return attributes;
     }
 
-    <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass) {
-        return getAppScopedKeyAttributes(modelClass, null);
-    }
-
-    <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
+    private <TModel extends AlexaStateModel> Map<String, AttributeValue> getAppScopedKeyAttributes(final Class<TModel> modelClass, final String id) {
         return getAppScopedKeyAttributes(TModel.getAttributeKey(modelClass, id));
     }
 
@@ -414,8 +428,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             tableExistenceApproved = TableStatus.ACTIVE.toString().equals(table.getTableStatus());
             return tableExistenceApproved;
         } catch (ResourceNotFoundException e) {
-            final String error = String.format("Could not find table '%1$s'", tableName);
-            log.warn(error);
+            final String message = String.format("Could not find table '%1$s'", tableName);
+            log.warn(message, e);
             return false;
         }
     }

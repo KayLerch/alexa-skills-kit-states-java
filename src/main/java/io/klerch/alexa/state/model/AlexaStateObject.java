@@ -1,43 +1,43 @@
 package io.klerch.alexa.state.model;
 
 /**
- * Instead of managing state of POJO models you can also provide key-value objects
+ * Instead of managing state of POJO models you can also provide id-value objects
  * to the state handlers.
  */
 public class AlexaStateObject {
-    private final String key;
+    private final String id;
     private final Object value;
     private final AlexaScope scope;
 
     /**
-     * Creates a key-value state. When given to a state handler the object will be
+     * Creates a id-value state. When given to a state handler the object will be
      * saved in SESSION scope.
-     * @param key the key used by the state handler to write value to persistence store.
+     * @param id the id used by the state handler to write value to persistence store.
      * @param value the value to write to persistence store by a state handler
      */
-    public AlexaStateObject(final String key, final Object value) {
-        this(key, value, AlexaScope.SESSION);
+    public AlexaStateObject(final String id, final Object value) {
+        this(id, value, AlexaScope.SESSION);
     }
 
     /**
-     * Creates a key-value state. When given to a state handler the object will be
+     * Creates a id-value state. When given to a state handler the object will be
      * saved in the given scope.
-     * @param key the key used by the state handler to write value to persistence store.
+     * @param id the id used by the state handler to write value to persistence store.
      * @param value the value to write to persistence store by a state handler
      * @param scope the scope used by the state handler to write value to persistence store.
      */
-    public AlexaStateObject(final String key, final Object value, final AlexaScope scope) {
-        this.key = key;
+    public AlexaStateObject(final String id, final Object value, final AlexaScope scope) {
+        this.id = id;
         this.value = value;
         this.scope = scope;
     }
 
     /**
-     * Returns the key used by the state handler to read/write value from/to persistence store.
-     * @return The key used by the state handler to read/write value from/to persistence store.
+     * Returns the id used by the state handler to read/write value from/to persistence store.
+     * @return The id used by the state handler to read/write value from/to persistence store.
      */
-    public String getKey() {
-        return key;
+    public String getId() {
+        return id;
     }
 
     /**

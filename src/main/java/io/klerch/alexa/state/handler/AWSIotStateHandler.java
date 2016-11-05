@@ -7,9 +7,6 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.iot.AWSIot;
 import com.amazonaws.services.iot.AWSIotClient;
 import com.amazonaws.services.iot.model.*;
@@ -17,7 +14,6 @@ import com.amazonaws.services.iotdata.AWSIotData;
 import com.amazonaws.services.iotdata.AWSIotDataClient;
 import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
-import com.amazonaws.services.iotdata.model.PublishRequest;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,6 +64,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the AWS connection client used by this handler to manage resources
      * in AWS IoT.
+     *
      * @return AWS connection client for AWS IoT
      */
     public AWSIot getAwsClient() {
@@ -77,9 +74,10 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the AWS connection client used by this handler to store model states in
      * thing shadows of AWS IoT.
+     *
      * @return AWS data connection client for AWS IoT
      */
-    public AWSIotData getAwsDataClient() {
+    AWSIotData getAwsDataClient() {
         return this.awsDataClient;
     }
 
@@ -111,8 +109,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
         for (final AlexaStateObject stateObject : stateObjects) {
 
-            if (AlexaScope.USER.includes(stateObject.getScope()) ||
-                    AlexaScope.APPLICATION.includes(stateObject.getScope())) {
+            if (stateObject.getScope().isIn(AlexaScope.USER, AlexaScope.APPLICATION)) {
                 // only publish USER or APPLICATION scoped state objects
                 publishState(stateObject);
             }
@@ -131,27 +128,32 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void removeModel(final AlexaStateModel model) throws AlexaStateException {
-        super.removeModel(model);
+    public void removeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
+        super.removeModels(models);
 
-        if (model.hasSessionScopedField() || model.hasUserScopedField()) {
-            removeModelFromShadow(model, AlexaScope.USER);
+        for (final AlexaStateModel model : models) {
+            if (model.hasSessionScopedField() || model.hasUserScopedField()) {
+                removeModelFromShadow(model, AlexaScope.USER);
+            }
+            if (model.hasApplicationScopedField()) {
+                removeModelFromShadow(model, AlexaScope.APPLICATION);
+            }
+            log.debug(format("Removed state from AWS IoT shadow for '%1$s'.", model));
         }
-        if (model.hasApplicationScopedField()) {
-            removeModelFromShadow(model, AlexaScope.APPLICATION);
-        }
-        log.debug(format("Removed state from AWS IoT shadow for '%1$s'.", model));
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void removeValue(final String id) throws AlexaStateException {
-        super.removeValue(id);
-        removeNodeFromShadow(id, AlexaScope.USER);
-        removeNodeFromShadow(id, AlexaScope.APPLICATION);
-        log.debug(String.format("Removed value from AWS IoT shadow for '%1$s'.", id));
+    public void removeValues(final Collection<String> ids) throws AlexaStateException {
+        super.removeValues(ids);
+
+        for (final String id : ids) {
+            removeNodeFromShadow(id, AlexaScope.USER);
+            removeNodeFromShadow(id, AlexaScope.APPLICATION);
+            log.debug(String.format("Removed value from AWS IoT shadow for '%1$s'.", id));
+        }
     }
 
     /**
@@ -180,8 +182,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         if (modelChanged) {
             super.writeModel(model);
             return Optional.of(model);
-        }
-        else {
+        } else {
             // if there was nothing received from IOT and there is nothing to return from session
             // then its not worth return the model. better indicate this model does not exist
             return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
@@ -203,6 +204,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * Returns name of the thing whose shadow is updated by this handler. It depends on
      * the scope of the fields persisted in AWS IoT as APPLICATION-scoped fields go to a different
      * thing shadow than USER-scoped fields.
+     *
      * @param scope The scope this thing is dedicated to
      * @return Name of the thing for this scope
      * @throws AlexaStateException Any error regarding thing name generation
@@ -214,6 +216,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     /**
      * The thing will be created in AWS IoT if not existing for this application (when scope
      * APPLICATION is given) or for this user in this application (when scope USER is given)
+     *
      * @param scope The scope this thing is dedicated to
      * @throws AlexaStateException Any error regarding thing creation or existence check
      */
@@ -227,10 +230,11 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the name of the thing which is used to store model state scoped
      * as USER
+     *
      * @return Thing name for user-wide model state
      * @throws AlexaStateException some exceptions may occure when encrypting the user-id
      */
-    public String getUserScopedThingName() throws AlexaStateException {
+    String getUserScopedThingName() throws AlexaStateException {
         // user-ids in Alexa are too long for thing names in AWS IOT.
         // use the SHA1-hash of the user-id
         final String userHash;
@@ -247,15 +251,17 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     /**
      * Returns the name of the thing which is used to store model state scoped
      * as APPLICATION
+     *
      * @return Thing name for application-wide model state
      */
-    public String getAppScopedThingName() {
+    String getAppScopedThingName() {
         // thing names do not allow dots in it
         return session.getApplication().getApplicationId().replace(".", "-");
     }
 
     /**
      * Returns if the thing dedicated to the scope given is existing in AWS IoT.
+     *
      * @param scope The scope this thing is dedicated to
      * @return True, if the thing dedicated to the scope given is existing in AWS IoT.
      * @throws AlexaStateException Any error regarding thing creation or existence check
@@ -263,10 +269,6 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     public boolean doesThingExist(final AlexaScope scope) throws AlexaStateException {
         final String thingName = getThingName(scope);
         return doesThingExist(thingName);
-    }
-
-    private void removeObjectFromShadow(final AlexaStateObject stateObject) throws AlexaStateException {
-        removeNodeFromShadow(stateObject.getKey(), stateObject.getScope());
     }
 
     private void removeModelFromShadow(final AlexaStateModel model, final AlexaScope scope) throws AlexaStateException {
@@ -283,10 +285,10 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
                 final JsonNode desired = root.path("state").path("desired");
                 if (!desired.isMissingNode() && desired instanceof ObjectNode) {
                     ((ObjectNode) desired).remove(nodeName);
+                    final String json = "{\"state\":{\"desired\":" + mapper.writeValueAsString(desired) + "}}";
+                    publishState(thingName, json);
                 }
             }
-            final String json = mapper.writeValueAsString(root);
-            publishState(thingName, json);
         } catch (final IOException e) {
             final String error = format("Could not extract model state of '%1$s' from thing shadow '%2$s'", nodeName, thingName);
             log.error(error, e);
@@ -354,7 +356,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         createThingIfNotExisting(stateObject.getScope());
         // wrap non-primitive values in quotes (json string-value)
         final Object state = stateObject.getValue().getClass().isPrimitive() ? stateObject.getValue() : "\"" + stateObject.getValue() + "\"";
-        final String payload = "{\"state\":{\"desired\":{\"" + stateObject.getKey() + "\":" + state + "}}}";
+        final String payload = "{\"state\":{\"desired\":{\"" + stateObject.getId() + "\":" + state + "}}}";
         publishState(thingName, payload);
         log.debug(format("State '%1$s' is published to shadow of '%2$s' in AWS IoT.", payload, thingName));
     }
@@ -391,12 +393,14 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
 
     private boolean doesThingExist(final String thingName) {
         // if already checked existence than return immediately
-        if (thingsExisting.contains(thingName)) return true;
+        if (thingsExisting.contains(thingName)) {
+            return true;
+        }
         // query by an attribute having the name of the thing
         // unfortunately you can only query for things with their attributes, not directly with their names
         final ListThingsRequest request = new ListThingsRequest().withAttributeName(thingAttributeName).withAttributeValue(thingName).withMaxResults(1);
         final ListThingsResult result = awsClient.listThings(request);
-        if(result != null && result.getThings() != null && result.getThings().isEmpty()) {
+        if (result != null && result.getThings() != null && result.getThings().isEmpty()) {
             thingsExisting.add(thingName);
             return true;
         }

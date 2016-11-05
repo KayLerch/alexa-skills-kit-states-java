@@ -1,6 +1,6 @@
 [![Join the chat at https://gitter.im/alexa-skills-kit-states-java/Lobby](https://badges.gitter.im/alexa-skills-kit-states-java/Lobby.svg)](https://gitter.im/alexa-skills-kit-states-java/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven central](https://img.shields.io/badge/maven%20central-v0.2.2-orange.svg)](http://search.maven.org/#artifactdetails%7Cio.klerch%7Calexa-skills-kit-states-java%7C0.2.2%7Cjar)
-![SonarQube Coverage](https://img.shields.io/badge/code%20coverage-80%25-green.svg)
+![SonarQube Coverage](https://img.shields.io/badge/code%20coverage-82%25-green.svg)
 
 __Reference project__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/) as a reference.
 

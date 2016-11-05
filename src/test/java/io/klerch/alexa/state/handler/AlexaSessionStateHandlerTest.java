@@ -8,7 +8,7 @@ package io.klerch.alexa.state.handler;
 
 public class AlexaSessionStateHandlerTest extends AlexaStateHandlerTest<AlexaSessionStateHandler> {
     @Override
-    public AlexaSessionStateHandler getHandler() {
+    public AlexaSessionStateHandler givenHandler() {
         return new AlexaSessionStateHandler(session);
     }
 }
