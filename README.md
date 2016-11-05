@@ -36,46 +36,47 @@ Add below Maven dependency to your project.
 Depending on what features you use from this SDK you also need to add dependencies to certain AWS SDKs dedicated to S3, DynamoDb or IoT.
 
 This SDK can __save you hundreds of lines of code__. See following examples where
-you can see how to load / create state of your prepared POJO model (referred as AlexaStateModel), updating
-some value and persist the update.
+you can see how to manage state of your prepared POJO model (referred as _AlexaStateModel_) or just single
+values.
 
 ### Managing Alexa session state in _Alexa Session_
 State is persisted throughout one client session.
 ```java
-AlexaStateHandler handler = new AlexaSessionStateHandler(session);
-User abby = handler.readModel(User.class, "Abby").orElse(handler.createModel(User.class, "Abby"));
+final AlexaStateHandler handler = new AlexaSessionStateHandler(session);
+final User abby = handler.readModel(User.class, "Abby").orElse(handler.createModel(User.class, "Abby"));
 abby.setPersonalHighscore(80);
 abby.saveState();
+handler.writeValue("overallHighscore", abby.getPersonalHighscore());
 ```
 ### Managing Alexa session state in a _AWS DynamoDB table_
 State is persisted permanently per user.
 ```java
-AlexaStateHandler handler = new AWSDynamoStateHandler(session);
-User john = handler.readModel(User.class, "John").orElse(handler.createModel(User.class, "John"));
+final AlexaStateHandler handler = new AWSDynamoStateHandler(session);
+final User john = handler.readModel(User.class, "John").orElse(handler.createModel(User.class, "John"));
 john.setPersonalHighscore(90);
 john.saveState();
+handler.writeValue("overallHighscore", john.getPersonalHighscore());
 ```
 ### Managing Alexa session state in a _AWS S3 bucket_
 If you like to administer state objects in files why not using an S3 bucket?
 ```java
-AlexaStateHandler handler = new AWSS3StateHandler(session, "bucketName");
-User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
+final AlexaStateHandler handler = new AWSS3StateHandler(session, "bucketName");
+final User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
 bob.setPersonalHighscore(100);
 bob.saveState();
+handler.writeValue("overallHighscore", bob.getPersonalHighscore());
 ```
 
 ### Propagate Alexa session state to a _AWS IoT thing shadow_
 You can not only use handlers to persist states but also to propagate it.
 By propagating state to an AWS IoT thing shadow you interact with physical things easily
 ```java
-AlexaStateHandler handler = new AWSIoTStateHandler(session);
-User bob = handler.readModel(User.class, "Bob").orElse(handler.createModel(User.class, "Bob"));
-bob.setPersonalHighscore(100);
-bob.saveState();
+final AlexaStateHandler handler = new AWSIoTStateHandler(session);
+final User tim = handler.readModel(User.class, "Tim").orElse(handler.createModel(User.class, "Tim"));
+tim.setPersonalHighscore(110);
+tim.saveState();
+handler.writeValue("overallHighscore", tim.getPersonalHighscore());
 ```
-Imagine having an LED display connected with AWS IoT - specifically to an MQTT topic
-publishing messages on thing shadow updates - so you can display the
-highscore in public places.
 
 It is easy to __implement your own AlexaStateHandler__ so you can save
 state in whatever you want to use.
@@ -135,7 +136,7 @@ one of the following handlers:
 The __AlexaSessionStateHandler__ persists state in the Alexa session JSON and
 and is not capable of saving state in _USER_- or _APPLICATION_-scope.
 ```java
-AlexaStateHandler sh1 = new AlexaSessionStateHandler(session);
+final AlexaStateHandler sh1 = new AlexaSessionStateHandler(session);
 ```
 
 The __AWSS3StateHandler__ persists state in files in an AWS S3 bucket. It can be
@@ -145,8 +146,8 @@ the handler also gets the Alexa session object, whatever is read from or written
 will be in your Alexa session as well. So you won't need to read out your
 model state over and over again within one session.
 ```java
-AlexaStateHandler s3h1 = new AWSS3StateHandler(session, "bucketName");
-AlexaStateHandler s3h2 = new AWSS3StateHandler(session, new AmazonS3Client().withRegion(Regions.US_EAST_1), "bucketName");
+final AlexaStateHandler s3h1 = new AWSS3StateHandler(session, "bucketName");
+final AlexaStateHandler s3h2 = new AWSS3StateHandler(session, new AmazonS3Client().withRegion(Regions.US_EAST_1), "bucketName");
 ```
 
 The __AWSDynamoStateHandler__ persists state in items in a DynamoDB table. If
@@ -156,9 +157,9 @@ the handler gets the Alexa session object, whatever is read from or written to t
 will be in your Alexa session as well. So you won't need to read out your
 model state over and over again within one session.
 ```java
-AlexaStateHandler dyh1 = new AWSDynamoStateHandler(session);
-AlexaStateHandler dyh2 = new AWSDynamoStateHandler(session, "tableName");
-AlexaStateHandler dyh3 = new AWSDynamoStateHandler(session, new AmazonDynamoDBClient(), "tableName");
+final AlexaStateHandler dyh1 = new AWSDynamoStateHandler(session);
+final AlexaStateHandler dyh2 = new AWSDynamoStateHandler(session, "tableName");
+final AlexaStateHandler dyh3 = new AWSDynamoStateHandler(session, new AmazonDynamoDBClient(), "tableName");
 ```
 
 The __AWSIoTStateHandler__ persists state in a virtual representation of a
@@ -167,8 +168,8 @@ of that thing and automatically propagates state updates to the connected thing.
 It also receives state updates from the thing which will persist in the shadow as well.
 This handler can also read out that updated data and serialize it in your model.
 ```java
-AlexaStateHandler ioth1 = new AWSIoTStateHandler(session);
-AlexaStateHandler ioth1 = new AWSIoTStateHandler(session, new AWSIotClient(), new AWSIotDataClient());
+final AlexaStateHandler ioth1 = new AWSIoTStateHandler(session);
+final AlexaStateHandler ioth1 = new AWSIoTStateHandler(session, new AWSIotClient(), new AWSIotDataClient());
 ```
 ## 3) Create an instance of your model
 So you got your POJO model and also your preferred state handler. They now need
@@ -176,8 +177,8 @@ to get introduced to each other. The most convenient way is to instantiate
 your model with help of the state handler. Of course you can construct your model
 as you like and set the handler later on.
 ```java
-User bob = handler.createModel(User.class, "Bob");
-QuizGame game = handler.createModel(QuizGame.class);
+final User bob = handler.createModel(User.class, "Bob");
+final QuizGame game = handler.createModel(QuizGame.class);
 ```
 There's a big difference between both lines because the first one gives
 the model being created an identifier. This is how you can have multiple
@@ -209,24 +210,47 @@ bob.withHandler(s3Handler).saveState();
 // or like this
 dynamoHandler.writeModel(bob);
 ```
+
+You are not limited to POJO models. Since version 1.0.0 you can also write
+single values to a store. You need to provide an id and a serializable value and
+optionally the scope you want that value to be saved in (by default the scope is
+SESSION)
+```java
+dynamoHandler.writeValue("mySessionStateKey", "myValue");
+dynamoHandler.writeValue("myUserStateKey", 123, AlexaScope.USER);
+```
+
+Moreover, you can write multiple models or values at once. Depending on the
+used handler you can leverage batch processing capabilities to enhance
+write performance to e.g. DynamoDB. If you´re using handlers which are not
+able to batch-process the following calls result in multiple single write
+ transactions behind the scenes (the S3 handler does that for example):
+```java
+final AlexaStateObject obj1 = new AlexaStateObject("mySessionStateKey", "myValue");
+final AlexaStateObject obj2 = new AlexaStateObject("myUserStateKey", 123, AlexaScope.USER);
+dynamoHandler.writeValues(Arrays.asList(obj1, obj2));
+// or write multiple models
+dynamoHandler.writeModels(bob, john, abby);
+```
+
 ## 5) Read state of your model from memory
 So real Bob is leaving his Echo for a week. After some days he's asking
 your skill again what's his personal highscore. As your skill is pimped with the State SDK
 it just needs to read out _bob_ over the same handler it was saved back then.
 ```java
-Optional<User> bob = handler.readModel(User.class, "Bob");
+final Optional<User> bob = handler.readModel(User.class, "Bob");
 if (bob.isPresent()) {
-    Integer bobsHighscore = bob.get().getPersonalHighscore();
+    final Integer bobsHighscore = bob.get().getPersonalHighscore();
 }
 ```
 He also wants to know the current highscore amongst all users as this could have changed meanwhile.
 Remember the _QuizGame_ is persisted in _APPLICATION_-scope.
 ```java
-QuizGame game = handler.readModel(QuizGame.class).orElse(handler.createModel(QuizGame.class));
-Integer highscore = game.getHighscore();
+final QuizGame game = handler.readModel(QuizGame.class).orElse(handler.createModel(QuizGame.class));
+final Integer highscore = game.getHighscore();
 }
 ```
-Thanks to _Optional_'s of Java8 we could react with creating a new _QuizGame_
+Thanks to _Optional_'s of Java8 we can react with creating a new _QuizGame_
 on not-existing in a fancy one-liner. We should have already done so when
 we constructed the models in chapter 3. Constructing and saving a model with
 or without and Id potentially overwrites an existing model in the store.
@@ -241,10 +265,31 @@ new AlexaSessionStateHandler(session).writeModel(bob);
 Next time you can read out _bob_ with _AlexaSessionStateHandler_ and not with
 the handler of DynamoDB or S3.
 ```java
-AlexaStateHandler sh = new AlexaSessionStateHandler(session);
-AlexaStateHandler dyh = new AWSDynamoStateHandler(session);
+final AlexaStateHandler sh = new AlexaSessionStateHandler(session);
+final AlexaStateHandler dyh = new AWSDynamoStateHandler(session);
 
 final User bob = sh.readModel(User.class, "bob").orElse(dyh.readModel(User.class, "bob").orElse(dyh.createModel(User.class, "bob")));
+```
+
+Once again you can also read to single values from the store by giving its id. By default
+the value is read from SESSION scope unless you provide the desired scope to read from.
+```java
+final Optional<AlexaStateObject> obj1 = sh.readValue("mySessionStateKey");
+final Optional<AlexaStateObject> obj2 = sh.readValue("myUserStateKey", AlexaScope.USER);
+```
+
+You can also read multiple values at once by providing a list of ids the handler should
+look after in the store. It returns a list of _AlexaStateObjects_ found in the store.
+```java
+final List<AlexaStateObject> obj = sh.readValues("mySessionStateKey", "myUserStateKey");
+```
+
+Also check out what the _exists_ methods can do for you. These methods check existence of
+models or single values in a store.
+```java
+if (sh.exists("mySessionStateKey") || sh.exists(User.class, "Bob")) {
+    // ...
+};
 ```
 
 ## 6) Remove state of your model
@@ -258,6 +303,10 @@ handler.removeModel(bob);
 // or if we haven't read out bob so far
 handler.readModel(User.class, "Bob").ifPresent(bob -> bob.removeState());
 ```
+
+Same goes for single values by using _removeValue_. Once again, you can also remove more than one model or
+value wiht _removeValues_ or _removeModels_.
+
 ## See how it works
 Putting it together, there's a lot you can do with these extensions in
 regards to state management in your Alexa skill.
@@ -266,15 +315,15 @@ Get detailed information for this SDK in the [Javadocs](https://kaylerch.github.
 One last example. Running _userScored("Bob", 100)_
 ```java
 void userScored(String player, Integer score) throws AlexaStateErrorException {
-    AlexaStateHandler handler = new AWSDynamoStateHandler(this.session);
-    User user = handler.readModel(User.class, player).orElse(handler.createModel(User.class, player));
+    final AlexaStateHandler handler = new AWSDynamoStateHandler(this.session);
+    final User user = handler.readModel(User.class, player).orElse(handler.createModel(User.class, player));
     // check if last score is player's personal highscore
     if (user.getPersonalHighscore() < score) {
         user.setPersonalHighscore(score);
         user.saveState();
     }
     // check if last score is all-time highscore of the game
-    QuizGame game = handler.readModel(QuizGame.class).orElse(handler.createModel(QuizGame.class));
+    final QuizGame game = handler.readModel(QuizGame.class).orElse(handler.createModel(QuizGame.class));
     if (game.getHighscore() < score) {
         game.setHighscore(score);
         game.setHighscorer(player);
