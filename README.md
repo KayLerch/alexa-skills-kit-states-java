@@ -90,7 +90,7 @@ in minutes.
 
 ## 1) Prepare your POJO model class
 This step is optional. If you just want to read/write single values to the store go on
-with chapter 4.
+with step 4).
 
 For complex information schema in your skill you better __start organizing your state
 in objects__. The above sample had the _User_-object. Think of a POJO with some
