@@ -89,7 +89,10 @@ Now you will learn how to pimp your Alexa skill with permanent state capability
 in minutes.
 
 ## 1) Prepare your POJO model class
-Stop writing single values to a session or table and __start organizing your state
+This step is optional. If you just want to read/write single values to the store go on
+with chapter 4.
+
+For complex information schema in your skill you better __start organizing your state
 in objects__. The above sample had the _User_-object. Think of a POJO with some
 member fields.
 1) Let your POJO derive from _AlexaStateModel_ and you are ready to go.
@@ -188,7 +191,7 @@ singleton. What in this case makes total sense as the _QuizGame_ is scoped
 as _APPLICATION_ and is shared with all users of your skill. Moreover, the
 second approach won't let you deal with identifiers.
 
-## 4) Save state of your model
+## 4) Save state of your model or single value
 Continuing from above lines we now assign some values to _bob_ and set a
 new highscore in the _game_. But nothing will be persisted until you tell
 your model to save its state. There are two alternatives of doing so:
@@ -233,7 +236,7 @@ dynamoHandler.writeValues(Arrays.asList(obj1, obj2));
 dynamoHandler.writeModels(bob, john, abby);
 ```
 
-## 5) Read state of your model from memory
+## 5) Read state of your model or single value
 So real Bob is leaving his Echo for a week. After some days he's asking
 your skill again what's his personal highscore. As your skill is pimped with the State SDK
 it just needs to read out _bob_ over the same handler it was saved back then.
@@ -292,7 +295,7 @@ if (sh.exists("mySessionStateKey") || sh.exists(User.class, "Bob")) {
 };
 ```
 
-## 6) Remove state of your model
+## 6) Remove state of your model or single value
 Of course you can delete the state of your model. Let's keep it short as I
 think you already got it.
 ```java
