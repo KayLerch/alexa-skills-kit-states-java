@@ -28,52 +28,49 @@ public class AWSS3StateHandlerTest extends AlexaStateHandlerTest<AWSS3StateHandl
 
     @Override
     public AWSS3StateHandler givenHandler() throws Exception {
-        final AmazonS3Client s3Client = Mockito.mock(AmazonS3Client.class, new Answer() {
-            @Override
-            public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-                if (invocationOnMock.getMethod().getName().equals("doesObjectExist")) {
-                    // true in case of any model requested beside the one assumed as absent
-                    return !(Arrays.stream(invocationOnMock.getArguments()).filter(p -> p.toString().contains(absentModelId)).findAny().isPresent());
-                }
-                if (invocationOnMock.getMethod().getName().equals("putObject")) return new PutObjectResult();
-                if (invocationOnMock.getMethod().getName().equals("deleteObject")) return null;
-                if (invocationOnMock.getMethod().getName().equals("getObject")) {
-                    // look for a parameter which contains the application-foldername
-                    // this indicates getObject was called to get the application file
-                    final String filePath = invocationOnMock.getArgumentAt(1, String.class);
-                    if (filePath.contains("__application")) {
-                        // get payload of respective test instance if their id is found in the filepath
-                        final String payload =
-                                filePath.contains(modelId) ? givenModel(modelId).toJSON(AlexaScope.APPLICATION) :
-                                        filePath.contains(modelId2) ? givenModel(modelId2).toJSON(AlexaScope.APPLICATION) :
-                                                !filePath.contains(absentModelId) ? givenModel(null).toJSON(AlexaScope.APPLICATION) : null;
-                        // dummy file for application which will be returned by mocked S3-getObject
-                        if (payload != null) {
-                            final S3Object appFile = new S3Object();
-                            appFile.setObjectContent(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
-                            return appFile;
-                        } else {
-                            return null;
-                        }
-                    }
-                    // otherwise it must have been a call to getObject() to read from user-file
-                    else {
-                        // get payload of respective test instance if their id is found in the filepath
-                        final String payload =
-                                filePath.contains(modelId) ? givenModel(modelId).toJSON(AlexaScope.USER) :
-                                        filePath.contains(modelId2) ? givenModel(modelId2).toJSON(AlexaScope.USER) :
-                                                !filePath.contains(absentModelId) ? givenModel(null).toJSON(AlexaScope.USER) : null;
-                        // dummy file for application which will be returned by mocked S3-getObject
-                        if (payload != null) {
-                            final S3Object appFile = new S3Object();
-                            appFile.setObjectContent(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
-                            return appFile;
-                        }
+        final AmazonS3Client s3Client = Mockito.mock(AmazonS3Client.class, (Answer) invocationOnMock -> {
+            if (invocationOnMock.getMethod().getName().equals("doesObjectExist")) {
+                // true in case of any model requested beside the one assumed as absent
+                return !(Arrays.stream(invocationOnMock.getArguments()).filter(p -> p.toString().contains(absentModelId)).findAny().isPresent());
+            }
+            if (invocationOnMock.getMethod().getName().equals("putObject")) return new PutObjectResult();
+            if (invocationOnMock.getMethod().getName().equals("deleteObject")) return null;
+            if (invocationOnMock.getMethod().getName().equals("getObject")) {
+                // look for a parameter which contains the application-foldername
+                // this indicates getObject was called to get the application file
+                final String filePath = invocationOnMock.getArgumentAt(1, String.class);
+                if (filePath.contains("__application")) {
+                    // get payload of respective test instance if their id is found in the filepath
+                    final String payload =
+                            filePath.contains(modelId) ? givenModel(modelId).toJSON(AlexaScope.APPLICATION) :
+                                    filePath.contains(modelId2) ? givenModel(modelId2).toJSON(AlexaScope.APPLICATION) :
+                                            !filePath.contains(absentModelId) ? givenModel(null).toJSON(AlexaScope.APPLICATION) : null;
+                    // dummy file for application which will be returned by mocked S3-getObject
+                    if (payload != null) {
+                        final S3Object appFile = new S3Object();
+                        appFile.setObjectContent(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
+                        return appFile;
+                    } else {
                         return null;
                     }
                 }
-                return null;
+                // otherwise it must have been a call to getObject() to read from user-file
+                else {
+                    // get payload of respective test instance if their id is found in the filepath
+                    final String payload =
+                            filePath.contains(modelId) ? givenModel(modelId).toJSON(AlexaScope.USER) :
+                                    filePath.contains(modelId2) ? givenModel(modelId2).toJSON(AlexaScope.USER) :
+                                            !filePath.contains(absentModelId) ? givenModel(null).toJSON(AlexaScope.USER) : null;
+                    // dummy file for application which will be returned by mocked S3-getObject
+                    if (payload != null) {
+                        final S3Object appFile = new S3Object();
+                        appFile.setObjectContent(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)));
+                        return appFile;
+                    }
+                    return null;
+                }
             }
+            return null;
         });
         // construct handler with mocked s3-client
         return new AWSS3StateHandler(session, s3Client, bucketName);

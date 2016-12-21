@@ -54,12 +54,11 @@ public enum AlexaScope {
     public boolean includes(final AlexaScope scope) {
         // the given scope needs a higher value than this one to get covered except for they equal
         // this is how scopes with same values exclude each other (which is desirable for user and application)
-
         return scope.getValue() > this.value || this.equals(scope);
     }
 
     public boolean isIn(AlexaScope... scopes) {
-        return Arrays.stream(scopes).filter(this::equals).findAny().isPresent();
+        return Arrays.stream(scopes).anyMatch(this::equals);
     }
 
     /**
