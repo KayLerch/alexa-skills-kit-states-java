@@ -156,10 +156,11 @@ public class AlexaStateModelTest {
     @Test
     public void fromJSONInScope() throws Exception {
         final String value = "value";
-        final String json = "{\"sampleString\":\"" + value + "\"}";
+        final String json = "{\"sampleString\":\"" + value + "\", \"users\": [{\"field\" : \"test1\"}, {\"field\" : \"test1\"}]}";
         final Model model = new Model();
         model.fromJSON(json, AlexaScope.SESSION);
         assertEquals(model.sampleString, value);
+        assertTrue(model.users.stream().allMatch(modelUser -> modelUser.getField().equals("test1")));
     }
 
     @Test
@@ -174,7 +175,7 @@ public class AlexaStateModelTest {
     @Test
     public void toJSONInScope() throws Exception {
         final String value = "value";
-        final String json = "{\"id\":null,\"sampleString\":\"" + value + "\",\"sampleUser\":null,\"sampleApplication\":false,\"sampleSession\":[]}";
+        final String json = "{\"id\":null,\"sampleString\":\"" + value + "\",\"sampleUser\":null,\"sampleApplication\":false,\"sampleSession\":[],\"users\":[]}";
         final Model model = new Model();
         model.sampleString = value;
         assertEquals(model.toJSON(AlexaScope.SESSION), json);

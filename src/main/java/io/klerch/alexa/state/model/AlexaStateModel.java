@@ -20,6 +20,7 @@ import io.klerch.alexa.state.utils.ReflectionUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -232,7 +233,7 @@ public abstract class AlexaStateModel {
 
     /**
      * Expects a json-string which contains keys with values. Any key which is equal a fieldname of this model
-     * will result in its value being written to the field of this model. Those fields needs to have the AlexaStateSave-annotation
+     * will result in its value being written to the field of this model. Those fields need to have the AlexaStateSave-annotation
      * with the given scope otherwise they will not be considered even though there name match with a key in the given json.
      * @param json A json with key-value-pairs where the keys likely equal some of the AlexaStateSave-tagged with given scope fields in this model.
      * @param scope The scope a AlexaStateSave-annotated field must have to be considered for value assignment
@@ -241,14 +242,17 @@ public abstract class AlexaStateModel {
      */
     public boolean fromJSON(final String json, final AlexaScope scope) throws AlexaStateException {
         Boolean modelChanged = false;
-        final Map<String, Object> attributes = ConversionUtils.mapJson(json);
-        // go through all fields tagged as savestate and is within a scope
-        // cause we only want values assigned to fields which are dedicated for this
-        for (final Field field : getSaveStateFields(scope)) {
-            if (attributes.containsKey(field.getName())) {
-                this.set(field, attributes.get(field.getName()));
+
+        try {
+            final Object model = new ObjectMapper().readValue(json, this.getClass());
+            for (final Field field : getSaveStateFields(scope)) {
+                this.set(field, field.get(model));
                 modelChanged = true;
             }
+        } catch (final IOException | IllegalAccessException e) {
+            final String error = String.format("Error while deserializing model of '%1$s' as Json.", this);
+            log.error(error, e);
+            throw AlexaStateException.create(error).withCause(e).withModel(this).build();
         }
         return modelChanged;
     }

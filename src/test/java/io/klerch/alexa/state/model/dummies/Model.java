@@ -26,5 +26,6 @@ public class Model extends AlexaStateModel {
     @AlexaStateIgnore (Scope=AlexaScope.SESSION) public String sampleIgnoreSession;
     @AlexaStateIgnore (Scope=AlexaScope.USER) public String sampleIgnoreUser;
     @AlexaStateIgnore (Scope=AlexaScope.APPLICATION) public String sampleIgnoreApplication;
+    @AlexaStateSave public List<ModelUser> users = new ArrayList<>();
     public Model() {}
 }

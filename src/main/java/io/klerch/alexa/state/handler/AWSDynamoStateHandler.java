@@ -226,7 +226,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      */
     @Override
     public boolean exists(final String id, final AlexaScope scope) throws AlexaStateException {
-        if (AlexaScope.SESSION.includes(scope)) {
+        if (scope.includes(AlexaScope.SESSION)) {
             return super.exists(id, scope);
         } else {
             return readValueFromDb(id, scope).isPresent();
