@@ -340,6 +340,8 @@ gets you to
 
 Let's congrat Bob for beating the highscore ;)
 
+## Custom user-ids for true long-term persistence
+
 You may have noticed that by default Alexa's userId is used to as key when storing user-scoped
 model-state. This userId that comes in with every request to your skill, will change when
 a user re-enables your skill. That's not ideal as he would lose his state when enabling your skill
