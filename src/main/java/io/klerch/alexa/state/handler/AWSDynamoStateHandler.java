@@ -226,7 +226,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      */
     @Override
     public boolean exists(final String id, final AlexaScope scope) throws AlexaStateException {
-        if (scope.includes(AlexaScope.SESSION)) {
+        if (AlexaScope.SESSION.includes(scope)) {
             return super.exists(id, scope);
         } else {
             return readValueFromDb(id, scope).isPresent();
@@ -253,14 +253,20 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             // calculate attribute key for model
             final String attributeKey = TModel.getAttributeKey(modelClass, id);
             // go through resultset
+            boolean updatedAtAll = false;
             for (final Map<String, AttributeValue> item : readItemsFromDb(readRequests)) {
                 if (item.get(pkModel).getS().equals(attributeKey)) {
-                    model.fromJSON(item.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS());
+                    // only fields in requested scope should be updated in the model
+                    final AlexaScope scope = item.get(pkUser).getS().equals(attributeValueApp) ? AlexaScope.APPLICATION : AlexaScope.USER;
+                    final boolean updated = model.fromJSON(item.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS(), scope);
                     // write back user and app-scoped fields to session
                     super.writeModel(model);
-                    return Optional.of(model);
+                    // remember that either user- or app-scoped fields have been updated
+                    updatedAtAll = updatedAtAll || updated;
                 }
             }
+            if (updatedAtAll)
+                return Optional.of(model);
         }
         log.debug(String.format("No state for application- or user-scoped fields of model '%1$s' found in DynamoDB.", model));
         // if there was nothing received from dynamo and there is nothing to return from session
@@ -301,9 +307,9 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                 // add json as attribute
                 final String jsonState = model.toJSON(AlexaScope.USER);
                 attributes.put(attributeKeyState, new AttributeValue(jsonState));
-                // write all user-scoped attributes to table
-                items.add(attributes);
             }
+            // write all user-scoped attributes to table
+            items.add(attributes);
         }
         if (model.hasApplicationScopedField()) {
             // add primary keys as attributes
@@ -312,9 +318,9 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
                 // add json as attribute
                 final String jsonState = model.toJSON(AlexaScope.APPLICATION);
                 attributes.put(attributeKeyState, new AttributeValue(jsonState));
-                // write all app-scoped attributes to table
-                items.add(attributes);
             }
+            // write all app-scoped attributes to table
+            items.add(attributes);
         }
         return items;
     }

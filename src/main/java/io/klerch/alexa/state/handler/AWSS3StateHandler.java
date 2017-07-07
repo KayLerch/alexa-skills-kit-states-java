@@ -154,7 +154,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      */
     @Override
     public boolean exists(final String id, final AlexaScope scope) throws AlexaStateException {
-        if (scope.includes(AlexaScope.SESSION)) {
+        if (AlexaScope.SESSION.includes(scope)) {
             return super.exists(id, scope);
         } else {
             final String filePath = AlexaScope.USER.includes(scope) ?
