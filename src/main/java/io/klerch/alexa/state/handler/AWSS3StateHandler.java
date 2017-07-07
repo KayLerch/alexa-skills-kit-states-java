@@ -96,7 +96,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
+    public void writeModels(final Collection<? extends AlexaStateModel> models) throws AlexaStateException {
         // write to session
         super.writeModels(models);
 
@@ -123,7 +123,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
+    public void writeValues(final Collection<? extends AlexaStateObject> stateObjects) throws AlexaStateException {
         // write to session
         super.writeValues(stateObjects);
         stateObjects.stream()

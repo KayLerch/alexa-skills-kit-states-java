@@ -33,6 +33,8 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     private final String tableName;
     private final long readCapacityUnits;
     private final long writeCapacityUnits;
+    private static final int writeBatchLimit = 25;
+    private static final int readBatchLimit = 100;
     private static final String tablePrefix = "alexa-";
     // context value for the primary index for each item saved in application scope
     static final String attributeValueApp = "__application";
@@ -167,7 +169,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
+    public void writeModels(final Collection<? extends AlexaStateModel> models) throws AlexaStateException {
         // write to session
         super.writeModels(models);
 
@@ -188,7 +190,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
+    public void writeValues(final Collection<? extends AlexaStateObject> stateObjects) throws AlexaStateException {
         // write to session
         super.writeValues(stateObjects);
 
@@ -346,21 +348,38 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
             return Collections.emptyList();
         }
         ensureTableExists();
-        final KeysAndAttributes keysAndAttributes = new KeysAndAttributes().withKeys(keys);
-        final Map<String, KeysAndAttributes> requestItems = new HashMap<>();
-        requestItems.put(tableName, keysAndAttributes);
-        final BatchGetItemRequest getItemRequest = new BatchGetItemRequest().withRequestItems(requestItems);
-        final BatchGetItemResult result = awsClient.batchGetItem(getItemRequest);
-        return result.getResponses().getOrDefault(tableName, Collections.emptyList());
+
+        final List<Map<String, AttributeValue>> results = new ArrayList<>();
+
+        // ensure batches are sized according to read-batch-limit
+        for (int i = 0; i <= keys.size() / readBatchLimit; i++) {
+            final int startIndex = i * readBatchLimit;
+            final int toIndex = (startIndex + readBatchLimit) < keys.size() ? startIndex + readBatchLimit : keys.size();
+            final KeysAndAttributes keysAndAttributes = new KeysAndAttributes().withKeys(keys.subList(startIndex, toIndex));
+            final Map<String, KeysAndAttributes> requestItems = new HashMap<>();
+            requestItems.put(tableName, keysAndAttributes);
+
+            final BatchGetItemRequest getItemRequest = new BatchGetItemRequest().withRequestItems(requestItems);
+            final BatchGetItemResult result = awsClient.batchGetItem(getItemRequest);
+            results.addAll(result.getResponses().getOrDefault(tableName, Collections.emptyList()));
+        }
+        return results;
     }
 
     private void writeItemsToDb(final List<WriteRequest> items) throws AlexaStateException {
         if (!items.isEmpty()) {
             // if there is something which needs to be written to dynamo db ensure table exists
             ensureTableExists();
-            final BatchWriteItemRequest writeItemRequest = new BatchWriteItemRequest();
-            writeItemRequest.addRequestItemsEntry(tableName, items);
-            awsClient.batchWriteItem(writeItemRequest);
+
+            // ensure batches are sized according to write-batch-limit
+            for (int i = 0; i <= items.size() / writeBatchLimit; i++) {
+                final int startIndex = i * writeBatchLimit;
+                final int toIndex = (startIndex + writeBatchLimit) < items.size() ? startIndex + writeBatchLimit : items.size();
+
+                final BatchWriteItemRequest writeItemRequest = new BatchWriteItemRequest();
+                writeItemRequest.addRequestItemsEntry(tableName, items.subList(startIndex, toIndex));
+                awsClient.batchWriteItem(writeItemRequest);
+            }
         }
     }
 

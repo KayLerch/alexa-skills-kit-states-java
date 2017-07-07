@@ -72,7 +72,7 @@ public interface AlexaStateHandler {
      * @param models list of models to save state
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException;
+    void writeModels(final Collection<? extends AlexaStateModel> models) throws AlexaStateException;
 
     /**
      * The given value will be saved with the given id in the persistence store. Without giving
@@ -113,7 +113,7 @@ public interface AlexaStateHandler {
      * @param stateObjects the state objects to write to the persistence store
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException;
+    void writeValues(final Collection<? extends AlexaStateObject> stateObjects) throws AlexaStateException;
 
     /**
      * The given model will be removed from the persistence store. If it's not existing in the store nothing happens.
@@ -129,7 +129,7 @@ public interface AlexaStateHandler {
      * @param models Your models which need to be a type of {@link AlexaStateModel}
      * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
      */
-    void removeModels(final Collection<AlexaStateModel> models) throws AlexaStateException;
+    void removeModels(final Collection<? extends AlexaStateModel> models) throws AlexaStateException;
 
     /**
      * Removes a single value state from the persistence store with the given key used

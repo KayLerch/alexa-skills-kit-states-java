@@ -247,6 +247,7 @@ public abstract class AlexaStateModel {
         try {
             final ObjectMapper om = new ObjectMapper();
             om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
             final Object model = new ObjectMapper().readValue(json, this.getClass());
             for (final Field field : getSaveStateFields(scope)) {
                 field.setAccessible(true);

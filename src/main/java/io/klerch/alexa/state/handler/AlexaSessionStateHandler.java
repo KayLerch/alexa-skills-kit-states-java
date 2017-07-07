@@ -106,7 +106,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
+    public void writeModels(final Collection<? extends AlexaStateModel> models) throws AlexaStateException {
         Validate.notNull(models, "Collection of models to write must not be null.");
         models.forEach(model -> {
             try {
@@ -151,7 +151,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public void writeValues(final Collection<AlexaStateObject> stateObjects) throws AlexaStateException {
+    public void writeValues(final Collection<? extends AlexaStateObject> stateObjects) throws AlexaStateException {
         Validate.notNull(stateObjects, "List of state objects to write to persistence store must not be null.");
         stateObjects.stream()
                 .filter(o -> AlexaScope.SESSION.includes(o.getScope()))
@@ -168,7 +168,7 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     }
 
     @Override
-    public void removeModels(Collection<AlexaStateModel> models) throws AlexaStateException {
+    public void removeModels(Collection<? extends AlexaStateModel> models) throws AlexaStateException {
         Validate.notNull(models, "Collection of models to be removed must not be null.");
         final List<String> ids = models.stream().map(AlexaStateModel::getAttributeKey).collect(Collectors.toList());
         removeValues(ids);
