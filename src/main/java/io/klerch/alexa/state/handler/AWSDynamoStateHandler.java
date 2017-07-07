@@ -159,6 +159,14 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
+    public AWSDynamoStateHandler withUserId(final String userId) {
+        return (AWSDynamoStateHandler)super.withUserId(userId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
         // write to session
         super.writeModels(models);
@@ -407,7 +415,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
     private Map<String, AttributeValue> getUserScopedKeyAttributes(final String id) {
         Map<String, AttributeValue> attributes = new HashMap<>();
         attributes.put(pkModel, new AttributeValue(id));
-        attributes.put(pkUser, new AttributeValue(session.getUser().getUserId()));
+        attributes.put(pkUser, new AttributeValue(getUserId()));
         return attributes;
     }
 

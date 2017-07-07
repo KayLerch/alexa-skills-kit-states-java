@@ -16,14 +16,12 @@ import io.klerch.alexa.state.model.AlexaStateObject;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
-import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * As this handler works in the user and application scope it persists all models to an S3 bucket.
@@ -84,6 +82,14 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      */
     public String getBucketName() {
         return this.bucketName;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public AWSS3StateHandler withUserId(final String userId) {
+        return (AWSS3StateHandler)super.withUserId(userId);
     }
 
     /**
@@ -254,11 +260,11 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
     }
 
     private <TModel extends AlexaStateModel> String getUserScopedFilePath(final Class<TModel> modelClass, final String id) {
-        return session.getUser().getUserId() + "/" + TModel.getAttributeKey(modelClass, id) + "." + fileExtension;
+        return getUserId() + "/" + TModel.getAttributeKey(modelClass, id) + "." + fileExtension;
     }
 
     private String getUserScopedFilePath(final String id) {
-        return session.getUser().getUserId() + "/" + id + "." + fileExtension;
+        return getUserId() + "/" + id + "." + fileExtension;
     }
 
     private <TModel extends AlexaStateModel> String getAppScopedFilePath(final Class<TModel> modelClass, final String id) {

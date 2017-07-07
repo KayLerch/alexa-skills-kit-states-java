@@ -1,8 +1,8 @@
 [![Join the chat at https://gitter.im/alexa-skills-kit-states-java/Lobby](https://badges.gitter.im/alexa-skills-kit-states-java/Lobby.svg)](https://gitter.im/alexa-skills-kit-states-java/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Maven central](https://img.shields.io/badge/maven%20central-v1.0.1-orange.svg)](http://search.maven.org/#artifactdetails%7Cio.klerch%7Calexa-skills-kit-states-java%7C1.0.1%7Cjar)
+[![Maven central](https://img.shields.io/badge/maven%20central-v1.0.2-orange.svg)](http://search.maven.org/#artifactdetails%7Cio.klerch%7Calexa-skills-kit-states-java%7C1.0.2%7Cjar)
 ![SonarQube Coverage](https://img.shields.io/badge/code%20coverage-82%25-green.svg)
 
-__Reference project__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/) as a reference.
+__Reference projects__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/) as a reference.
 
 #Alexa States SDK for Java
 
@@ -27,7 +27,7 @@ Add below Maven dependency to your project.
   <dependency>
     <groupId>io.klerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
   </dependency>
   ...
 </dependencies>
@@ -83,7 +83,7 @@ state in whatever you want to use.
 
 Each model declares on its own what is saved and even can decide on what scope is
 used to read and write attributes. That is how you can __not only save state per
-user but also per application__ for e.g. managing the highscore of your little game.
+user but also per application__ for e.g. managing the highscore of your game skill.
 
 Now you will learn how to pimp your Alexa skill with permanent state capability
 in minutes.
@@ -128,9 +128,8 @@ the _level_ is ignored and will not persist in your session.
 
 ![Scopes in Alexa Skills Kit extensions for state management](/img/alexa-scopes.png)
 
-Regarding type support of _@AlexaStateSave_ there's a rule of thumb saying
-whatever [Jackson](http://wiki.fasterxml.com/JacksonHome)'s JsonSerializer can handle is allowed. This not only covers
-Strings, Ints and Booleans but also works fine for Arrays, Lists and Key-Value-Collections.
+When serializing and deserializing models, the States SDK relies on [Jackson](http://wiki.fasterxml.com/JacksonHome)'s ObjectMapper.
+That being said, you can use Json-properties, reference your own (de)serialization-logic and more in the _AlexaStateModels_.
 
 ## 2) Choose your _AlexaStateHandler_
 Depending on where you want to save your model's states you can pick from
@@ -340,3 +339,11 @@ gets you to
 ![Bob's state in DynamoDB table](/img/bob-in-dynamo.png)
 
 Let's congrat Bob for beating the highscore ;)
+
+You may have noticed that by default Alexa's userId is used to as key when storing user-scoped
+model-state. This userId that comes in with every request to your skill, will change when
+a user re-enables your skill. That's not ideal as he would lose his state when enabling your skill
+with another Amazon account or disables and re-enables your skill with the same account. 
+If you're using account-linking you may have your own userId which is independant from the skill enablement.
+You can assign custom userIds to a handler (_setUserId(String)_, _withUserId(String)_) and it
+will use this one when saving user-scoped model-state.

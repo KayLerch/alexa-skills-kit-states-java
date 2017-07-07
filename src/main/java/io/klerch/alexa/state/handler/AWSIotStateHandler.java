@@ -85,6 +85,14 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
+    public AWSIotStateHandler withUserId(final String userId) {
+        return (AWSIotStateHandler)super.withUserId(userId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void writeModels(final Collection<AlexaStateModel> models) throws AlexaStateException {
         // write to session
         super.writeModels(models);
@@ -239,7 +247,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         // use the SHA1-hash of the user-id
         final String userHash;
         try {
-            userHash = EncryptUtils.encryptSha1(session.getUser().getUserId());
+            userHash = EncryptUtils.encryptSha1(getUserId());
         } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
             final String error = "Could not encrypt user-id for generating the IOT thing-name";
             log.error(error, e);
@@ -381,7 +389,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
         attrPayload.addAttributesEntry(thingAttributeName, thingName);
         // if scope is user an attribute saves the plain user id as it is encrypted in the thing name
         if (AlexaScope.USER.includes(scope)) {
-            attrPayload.addAttributesEntry(thingAttributeUser, session.getUser().getUserId());
+            attrPayload.addAttributesEntry(thingAttributeUser, getUserId());
         }
         // another thing attributes holds the Alexa application-id
         attrPayload.addAttributesEntry(thingAttributeApp, session.getApplication().getApplicationId());

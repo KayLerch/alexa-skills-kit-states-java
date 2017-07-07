@@ -7,6 +7,7 @@
 package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
+import com.amazonaws.util.StringUtils;
 import io.klerch.alexa.state.model.AlexaScope;
 import io.klerch.alexa.state.model.AlexaStateModel;
 import io.klerch.alexa.state.model.AlexaStateModelFactory;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
  */
 public class AlexaSessionStateHandler implements AlexaStateHandler {
     private final Logger log = Logger.getLogger(AlexaSessionStateHandler.class);
+    private String userId;
     final Session session;
 
     /**
@@ -40,6 +42,37 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     public Session getSession() {
         return this.session;
+    }
+
+    /**
+     * sets the userId used as a key when storing user-scoped model-state
+     * If no userId is provided the handler will use userId coming in with the session
+     * Note, the userId from Alexa will change when a user re-enables your skill
+     * @param userId userId used as a key when storing user-scoped model-state
+     */
+    public final void setUserId(final String userId) {
+        this.userId = userId;
+    }
+
+    /**
+     * Gets the userId used as a key when storing user-scoped model-state. If no custom
+     * userId was set for this handler it returns the userId from the underlying Alexa session.
+     *  @return userId used as a key when storing user-scoped model-state
+     */
+    public final String getUserId() {
+        return StringUtils.isNullOrEmpty(this.userId) ? session.getUser().getUserId() : this.userId;
+    }
+
+    /**
+     * sets the userId used as a key when storing user-scoped model-state
+     * If no userId is provided the handler will use userId coming in with the session
+     * Note, the userId from Alexa will change when a user re-enables your skill
+     * @param userId userId used as a key when storing user-scoped model-state
+     * @return handler
+     */
+    public AlexaStateHandler withUserId(final String userId) {
+        setUserId(userId);
+        return this;
     }
 
     /**

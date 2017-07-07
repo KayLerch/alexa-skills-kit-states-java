@@ -7,6 +7,7 @@
 package io.klerch.alexa.state.model;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.klerch.alexa.state.handler.AlexaStateHandler;
@@ -244,8 +245,11 @@ public abstract class AlexaStateModel {
         Boolean modelChanged = false;
 
         try {
+            final ObjectMapper om = new ObjectMapper();
+            om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             final Object model = new ObjectMapper().readValue(json, this.getClass());
             for (final Field field : getSaveStateFields(scope)) {
+                field.setAccessible(true);
                 this.set(field, field.get(model));
                 modelChanged = true;
             }
