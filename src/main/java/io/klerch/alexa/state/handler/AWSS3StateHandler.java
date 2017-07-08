@@ -8,7 +8,7 @@ package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.S3Object;
@@ -48,7 +48,7 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * @param bucketName The bucket where all saved states will go into.
      */
     public AWSS3StateHandler(final Session session, final String bucketName) {
-        this(session, new AmazonS3Client(), bucketName);
+        this(session, AmazonS3ClientBuilder.defaultClient(), bucketName);
     }
 
     /**
@@ -173,33 +173,48 @@ public class AWSS3StateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
-        // if there is nothing for this model in the session ...
-        final Optional<TModel> modelSession = super.readModel(modelClass, id);
-        // create new model with given id. for now we assume a model exists for this id. we find out by
-        // reading file from the bucket in the following lines. only if this is true model will be written back to session
-        final TModel model = modelSession.orElse(createModel(modelClass, id));
-        // we need to remember if there will be something from S3 to be written to the model
-        // in order to write those values back to the session at the end of this method
-        Boolean modelChanged = false;
-        // and if there are user-scoped fields ...
-        if (model.hasUserScopedField() && fromS3FileContentsToModel(model, id, AlexaScope.USER)) {
-            modelChanged = true;
+    public <TModel extends AlexaStateModel> Map<String, TModel> readModels(final Class<TModel> modelClass, final Collection<String> ids) throws AlexaStateException {
+        // select all models that have a representation in the session
+        final Map<String, TModel> existingModels = super.readModels(modelClass, ids);
+
+        final Map<String, TModel> allModels = new HashMap<>(existingModels);
+        // create new models were there was no representation in the session with given id. for now we assume a model exists for this id. we find out by
+        // querying dynamodb in the following lines. only if there's actually something for it in dynamo we'll keep it.
+        ids.stream().filter(id -> !existingModels.containsKey(id)).forEach(id -> {
+            allModels.putIfAbsent(id, createModel(modelClass, id));
+        });
+
+        // this is where we store models that were updated with values found in DynamoDb
+        final Map<String, TModel> updatedModels = new HashMap<>();
+
+        for (final TModel model : allModels.values()) {
+            // we need to remember if there will be something from S3 to be written to the model
+            // in order to write those values back to the session at the end of this method
+            Boolean modelChanged = false;
+            // and if there are user-scoped fields ...
+            if (model.hasUserScopedField() && fromS3FileContentsToModel(model, model.getId(), AlexaScope.USER)) {
+                modelChanged = true;
+            }
+            // and if there are app-scoped fields ...
+            if (model.hasApplicationScopedField() && fromS3FileContentsToModel(model, model.getId(), AlexaScope.APPLICATION)) {
+                modelChanged = true;
+            }
+            // so if model changed from within something out of S3 we want this to be in the speechlet as well
+            // this gives you access to user- and app-scoped attributes throughout a session without reading from S3 over and over again
+            if (modelChanged) {
+                updatedModels.put(model.getId(), model);
+            }
         }
-        // and if there are app-scoped fields ...
-        if (model.hasApplicationScopedField() && fromS3FileContentsToModel(model, id, AlexaScope.APPLICATION)) {
-            modelChanged = true;
-        }
-        // so if model changed from within something out of S3 we want this to be in the speechlet as well
-        // this gives you access to user- and app-scoped attributes throughout a session without reading from S3 over and over again
-        if (modelChanged) {
-            super.writeModel(model);
-            return Optional.of(model);
-        } else {
-            // if there was nothing received from S3 and there is nothing to return from session
-            // then its not worth return the model. better indicate this model does not exist
-            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
-        }
+        // write back updated values to session
+        super.writeModels(updatedModels.values());
+
+        // finally we join models that were found in the session + models with updates from Dynamo
+        existingModels.forEach((id, model) -> {
+            if (!updatedModels.containsKey(id)) {
+                updatedModels.put(id, model);
+            }
+        });
+        return updatedModels;
     }
 
     /**

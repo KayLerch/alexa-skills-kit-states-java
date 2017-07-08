@@ -177,6 +177,19 @@ public interface AlexaStateHandler {
     <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException;
 
     /**
+     * Reads out models from the persistence store of this handler. Depending on the {@link AlexaScope AlexaScope}s configured in
+     * the {@link AlexaStateSave AlexaStateSave} annotations it will possibly collect data from more than one persistence store. (most
+     * likely from the Alexa session and maybe from the permanent persistence store associated with this handler.)
+     * You are providing ids with this call. If you never saved any model with one of the ids in the store you won't get them.
+     * @param modelClass Type of the model you would like to read out. It needs to be of type {@link AlexaStateModel}.
+     * @param ids Collection of ids of existing instances of your model in the persistence store. If you provide ids of non-existing items they just won't show up in the returned map.
+     * @param <TModel> Type derived from {@link AlexaStateModel}
+     * @throws AlexaStateException Wraps all inner exceptions and gives you context related to handler and model
+     * @return Map of ids from your input list of ids pointing to models that were found in the persistence store. Augmented with all the attributes found in the persistence store.
+     */
+    <TModel extends AlexaStateModel> Map<String, TModel> readModels(final Class<TModel> modelClass, final Collection<String> ids) throws AlexaStateException;
+
+    /**
      * Reads a single object value from the persistence store. If no scope is provided this method will
      * always look for the value in Alexa session by default (Scope = Session). If you want
      * to check existence of a state model keep in mind its id is the attribute-key of the

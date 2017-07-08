@@ -9,6 +9,7 @@ package io.klerch.alexa.state.handler;
 import com.amazon.speech.speechlet.Session;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import io.klerch.alexa.state.model.AlexaStateObject;
@@ -60,7 +61,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * @param session The Alexa session of your current skill invocation.
      */
     public AWSDynamoStateHandler(final Session session) {
-        this(session, new AmazonDynamoDBClient(), null, 10L, 5L);
+        this(session, AmazonDynamoDBClientBuilder.defaultClient(), null, 10L, 5L);
     }
 
     /**
@@ -91,7 +92,7 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
      * @param tableName An existing table accessible by the client and with string hash-key named model-class and a string sort-key named amzn-user-id.
      */
     public AWSDynamoStateHandler(final Session session, final String tableName) {
-        this(session, new AmazonDynamoDBClient(), tableName, 10L, 5L);
+        this(session, AmazonDynamoDBClientBuilder.defaultClient(), tableName, 10L, 5L);
     }
 
     /**
@@ -247,41 +248,51 @@ public class AWSDynamoStateHandler extends AlexaSessionStateHandler {
         return attributeKeyState;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
-        // if there is nothing for this model in the session ...
-        final Optional<TModel> modelSession = super.readModel(modelClass, id);
-        // create new model with given id. for now we assume a model exists for this id. we find out by
-        // querying dynamodb in the following lines. only if this is true model will be written back to session
-        final TModel model = modelSession.orElse(createModel(modelClass, id));
-        // get read-request items (could be two - one for user-scoped item, one for app-scoped item)
-        final List<Map<String, AttributeValue>> readRequests = getItems(model, false);
+    public <TModel extends AlexaStateModel> Map<String, TModel> readModels(final Class<TModel> modelClass, final Collection<String> ids) throws AlexaStateException {
+        // select all models that have a representation in the session
+        final Map<String, TModel> existingModels = super.readModels(modelClass, ids);
+        final Map<String, TModel> allModels = new HashMap<>(existingModels);
+        // create new models were there was no representation in the session with given id. for now we assume a model exists for this id. we find out by
+        // querying dynamodb in the following lines. only if there's actually something for it in dynamo we'll keep it.
+        ids.stream().filter(id -> !existingModels.containsKey(id)).forEach(id -> {
+            allModels.putIfAbsent(id, createModel(modelClass, id));
+        });
+
+        // this is where we store all read-requests for dynamo
+        final List<Map<String, AttributeValue>> readRequests = new ArrayList<>();
+        // now we fill the list with read requests (could be two per model - one for user-scoped items, one for app-scoped items)
+        for (final TModel model : allModels.values()) {
+            getItems(model, false).forEach(readRequests::add);
+        }
+
+        // this is where we store models that were updated with values found in DynamoDb
+        final Map<String, TModel> updatedModels = new HashMap<>();
+
         if (!readRequests.isEmpty()) {
-            // calculate attribute key for model
-            final String attributeKey = TModel.getAttributeKey(modelClass, id);
             // go through resultset
-            boolean updatedAtAll = false;
             for (final Map<String, AttributeValue> item : readItemsFromDb(readRequests)) {
-                if (item.get(pkModel).getS().equals(attributeKey)) {
-                    // only fields in requested scope should be updated in the model
-                    final AlexaScope scope = item.get(pkUser).getS().equals(attributeValueApp) ? AlexaScope.APPLICATION : AlexaScope.USER;
-                    final boolean updated = model.fromJSON(item.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS(), scope);
-                    // write back user and app-scoped fields to session
-                    super.writeModel(model);
-                    // remember that either user- or app-scoped fields have been updated
-                    updatedAtAll = updatedAtAll || updated;
+                final String modelId = item.get(pkModel).getS();
+                final TModel model = allModels.get(TModel.resolveAttributeKeyToId(modelClass, modelId));
+                // only fields in requested scope should be updated in the model
+                final AlexaScope scope = item.get(pkUser).getS().equals(attributeValueApp) ? AlexaScope.APPLICATION : AlexaScope.USER;
+                final boolean updated = model.fromJSON(item.getOrDefault(attributeKeyState, new AttributeValue("{}")).getS(), scope);
+                if (updated) {
+                    // keep in mind as updated
+                    updatedModels.put(model.getId(), model);
                 }
             }
-            if (updatedAtAll)
-                return Optional.of(model);
         }
-        log.debug(String.format("No state for application- or user-scoped fields of model '%1$s' found in DynamoDB.", model));
-        // if there was nothing received from dynamo and there is nothing to return from session
-        // then its not worth to return the model. better indicate this model does not exist
-        return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
+        // write back updated values to session
+        super.writeModels(updatedModels.values());
+
+        // finally we join models that were found in the session + models with updates from Dynamo
+        existingModels.forEach((id, model) -> {
+            if (!updatedModels.containsKey(id)) {
+                updatedModels.put(id, model);
+            }
+        });
+        return updatedModels;
     }
 
     /**

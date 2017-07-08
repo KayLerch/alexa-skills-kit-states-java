@@ -8,10 +8,10 @@ package io.klerch.alexa.state.handler;
 
 import com.amazon.speech.speechlet.Session;
 import com.amazonaws.services.iot.AWSIot;
-import com.amazonaws.services.iot.AWSIotClient;
+import com.amazonaws.services.iot.AWSIotClientBuilder;
 import com.amazonaws.services.iot.model.*;
 import com.amazonaws.services.iotdata.AWSIotData;
-import com.amazonaws.services.iotdata.AWSIotDataClient;
+import com.amazonaws.services.iotdata.AWSIotDataClientBuilder;
 import com.amazonaws.services.iotdata.model.GetThingShadowRequest;
 import com.amazonaws.services.iotdata.model.GetThingShadowResult;
 import com.amazonaws.services.iotdata.model.UpdateThingShadowRequest;
@@ -30,6 +30,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -52,7 +53,7 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
     private List<String> thingsExisting = new ArrayList<>();
 
     public AWSIotStateHandler(final Session session) {
-        this(session, new AWSIotClient(), new AWSIotDataClient());
+        this(session, AWSIotClientBuilder.defaultClient(), AWSIotDataClientBuilder.defaultClient());
     }
 
     public AWSIotStateHandler(final Session session, final AWSIot awsClient, final AWSIotData awsDataClient) {
@@ -168,33 +169,47 @@ public class AWSIotStateHandler extends AlexaSessionStateHandler {
      * {@inheritDoc}
      */
     @Override
-    public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
-        // if there is nothing for this model in the session ...
-        final Optional<TModel> modelSession = super.readModel(modelClass, id);
-        // create new model with given id. for now we assume a model exists for this id. we find out by
-        // reading file from the bucket in the following lines. only if this is true model will be written back to session
-        final TModel model = modelSession.orElse(createModel(modelClass, id));
-        // we need to remember if there will be something from thing shadow to be written to the model
-        // in order to write those values back to the session at the end of this method
-        Boolean modelChanged = false;
-        // and if there are user-scoped fields ...
-        if (model.hasUserScopedField() && fromThingShadowToModel(model, AlexaScope.USER)) {
-            modelChanged = true;
+    public <TModel extends AlexaStateModel> Map<String, TModel> readModels(final Class<TModel> modelClass, final Collection<String> ids) throws AlexaStateException {
+        // select all models that have a representation in the session
+        final Map<String, TModel> existingModels = super.readModels(modelClass, ids);
+
+        final Map<String, TModel> allModels = new HashMap<>(existingModels);
+        // create new models were there was no representation in the session with given id. for now we assume a model exists for this id. we find out by
+        // querying dynamodb in the following lines. only if there's actually something for it in dynamo we'll keep it.
+        ids.stream().filter(id -> !existingModels.containsKey(id)).forEach(id -> {
+            allModels.putIfAbsent(id, createModel(modelClass, id));
+        });
+
+        // this is where we store models that were updated with values found in DynamoDb
+        final Map<String, TModel> updatedModels = new HashMap<>();
+
+        for (final TModel model : allModels.values()) {
+            // we need to remember if there will be something from thing shadow to be written to the model
+            // in order to write those values back to the session at the end of this method
+            Boolean modelChanged = false;
+            // and if there are user-scoped fields ...
+            if (model.hasUserScopedField() && fromThingShadowToModel(model, AlexaScope.USER)) {
+                modelChanged = true;
+            }
+            // and if there are app-scoped fields ...
+            if (model.hasApplicationScopedField() && fromThingShadowToModel(model, AlexaScope.APPLICATION)) {
+                modelChanged = true;
+            }
+            if (modelChanged) {
+                updatedModels.put(model.getId(), model);
+            }
         }
-        // and if there are app-scoped fields ...
-        if (model.hasApplicationScopedField() && fromThingShadowToModel(model, AlexaScope.APPLICATION)) {
-            modelChanged = true;
-        }
-        // so if model changed from within something out of the shadow we want this to be in the speechlet as well
-        // this gives you access to user- and app-scoped attributes throughout a session without reading from S3 over and over again
-        if (modelChanged) {
-            super.writeModel(model);
-            return Optional.of(model);
-        } else {
-            // if there was nothing received from IOT and there is nothing to return from session
-            // then its not worth return the model. better indicate this model does not exist
-            return modelSession.isPresent() ? Optional.of(model) : Optional.empty();
-        }
+        // write back updated values to session
+        super.writeModels(updatedModels.values());
+
+        // finally we join models that were found in the session + models with updates from Dynamo
+        existingModels.forEach((id, model) -> {
+            if (!updatedModels.containsKey(id)) {
+                updatedModels.put(id, model);
+            }
+        });
+
+        return updatedModels;
     }
 
     /**

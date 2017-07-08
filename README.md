@@ -1,5 +1,5 @@
 [![Join the chat at https://gitter.im/alexa-skills-kit-states-java/Lobby](https://badges.gitter.im/alexa-skills-kit-states-java/Lobby.svg)](https://gitter.im/alexa-skills-kit-states-java/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Maven central](https://img.shields.io/badge/maven%20central-v1.0.2-orange.svg)](http://search.maven.org/#artifactdetails%7Cio.klerch%7Calexa-skills-kit-states-java%7C1.0.2%7Cjar)
+[![Maven central](https://img.shields.io/badge/maven%20central-v1.1.0-orange.svg)](http://search.maven.org/#artifactdetails%7Cio.klerch%7Calexa-skills-kit-states-java%7C1.1.0%7Cjar)
 ![SonarQube Coverage](https://img.shields.io/badge/code%20coverage-82%25-green.svg)
 
 __Reference projects__: The award-winning [Morse-Coder skill](http://alexaskillscentral.com/skills/2016/05/26/morse-coder/) heavily relies on the States SDK. To learn more about this SDK use [the open source of Morse Coder](https://github.com/KayLerch/alexa-morse-coder/) as a reference.
@@ -27,7 +27,7 @@ Add below Maven dependency to your project.
   <dependency>
     <groupId>io.klerch</groupId>
     <artifactId>alexa-skills-kit-states-java</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
   </dependency>
   ...
 </dependencies>
@@ -282,8 +282,12 @@ final Optional<AlexaStateObject> obj2 = sh.readValue("myUserStateKey", AlexaScop
 
 You can also read multiple values at once by providing a list of ids the handler should
 look after in the store. It returns a list of _AlexaStateObjects_ found in the store.
+If you'd like to read multiple models of the same type at once a map is returned instead.
+For each model found in the persistence store an entry is added to the map where its key value
+is the model-id and the value is the model itself.
 ```java
 final List<AlexaStateObject> obj = sh.readValues("mySessionStateKey", "myUserStateKey");
+final Map<String, User> users = sh.readModels(User.class, "Bob", "Abby", "John", "Julia");
 ```
 
 Also check out what the _exists_ methods can do for you. These methods check existence of

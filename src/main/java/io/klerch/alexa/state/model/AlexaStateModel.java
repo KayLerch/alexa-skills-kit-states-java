@@ -18,6 +18,7 @@ import io.klerch.alexa.state.model.serializer.AlexaUserStateSerializer;
 import io.klerch.alexa.state.utils.AlexaStateException;
 import io.klerch.alexa.state.utils.ConversionUtils;
 import io.klerch.alexa.state.utils.ReflectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.log4j.Logger;
 
@@ -72,6 +73,11 @@ public abstract class AlexaStateModel {
      */
     public static <TModel extends AlexaStateModel> String getAttributeKey(final Class<TModel> modelClass, final String id) {
         return modelClass.getTypeName() + (id != null && !id.isEmpty() ? AttributeKeySeparator + id : "");
+    }
+
+    public static <TModel extends AlexaStateModel> String resolveAttributeKeyToId(final Class<TModel> modelClass, final String attributeKey) {
+        final String id = attributeKey.replace(modelClass.getTypeName(), "").replace(AttributeKeySeparator, "");
+        return StringUtils.isNotBlank(id) ? id : null;
     }
 
     /**

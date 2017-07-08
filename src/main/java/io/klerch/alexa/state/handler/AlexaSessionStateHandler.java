@@ -202,43 +202,64 @@ public class AlexaSessionStateHandler implements AlexaStateHandler {
     @Override
     @SuppressWarnings("unchecked")
     public <TModel extends AlexaStateModel> Optional<TModel> readModel(final Class<TModel> modelClass, final String id) throws AlexaStateException {
-        final Object o = session.getAttribute(TModel.getAttributeKey(modelClass, id));
-        if (o == null) {
-            log.info(String.format("Could not find state for '%1$s' in session attributes.", TModel.getAttributeKey(modelClass, id)));
-            return Optional.empty();
-        }
+         final Map<String, TModel> models = readModels(modelClass, Collections.singletonList(id));
+         return models.isEmpty() ? Optional.empty() : Optional.of(models.get(id));
+    }
 
-        if (o instanceof Map<?, ?>) {
-            final Map<?, ?> childAttributes = (Map<?, ?>) o;
-            final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
+    @Override
+    public <TModel extends AlexaStateModel> Map<String, TModel> readModels(final Class<TModel> modelClass, final Collection<String> ids) throws AlexaStateException {
+        final Map<String, TModel> models = new HashMap<>();
+        final Collection<String> resolvedIds = ids.stream().map(id -> TModel.getAttributeKey(modelClass, id)).collect(Collectors.toList());
+        final Map<String, Object> raw = new HashMap<>();
 
-            if (model != null) {
-                model.getSaveStateFields(AlexaScope.SESSION).parallelStream()
-                        .filter(field -> childAttributes.containsKey(field.getName()))
-                        .forEach(field -> {
-                            try {
-                                model.set(field, childAttributes.get(field.getName()));
-                            } catch (AlexaStateException e) {
-                                log.error(String.format("Could not set value for '%1$s' of model '%2$s'", field.getName(), model), e);
-                            }
-                        });
-                log.debug(String.format("Read state for '%1$s' in session attributes.", model));
+        session.getAttributes().forEach((id,val) -> {
+            if (resolvedIds.contains(id) && val != null) {
+                raw.put(id, val);
             }
-            return model != null ? Optional.of(model) : Optional.empty();
+        });
+
+        for (final String id : raw.keySet()) {
+            final Object o = raw.get(id);
+
+            if (o instanceof Map<?, ?>) {
+                final Map<?, ?> childAttributes = (Map<?, ?>) o;
+                final TModel model = AlexaStateModelFactory.createModel(modelClass, this, TModel.resolveAttributeKeyToId(modelClass, id));
+
+                if (model != null) {
+                    model.getSaveStateFields(AlexaScope.SESSION).parallelStream()
+                            .filter(field -> childAttributes.containsKey(field.getName()))
+                            .forEach(field -> {
+                                try {
+                                    model.set(field, childAttributes.get(field.getName()));
+                                } catch (AlexaStateException e) {
+                                    log.error(String.format("Could not set value for '%1$s' of model '%2$s'", field.getName(), model), e);
+                                }
+                            });
+                    log.debug(String.format("Read state for '%1$s' in session attributes.", model));
+                    models.put(id, model);
+                }
+            }
+            else if (o instanceof String) {
+                final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
+                model.fromJSON((String)o);
+                log.debug(String.format("Read state for '%1$s' in session attributes.", model));
+                models.put(id, model);
+            }
+            else {
+                // if not a map than expect it to be the model
+                // this only happens if a model was added to the session before its json-serialization
+                final TModel model = (TModel)o;
+                log.debug(String.format("Read state for '%1$s' in session attributes.", model));
+                models.put(id, model);
+            }
         }
-        else if (o instanceof String) {
-            final TModel model = AlexaStateModelFactory.createModel(modelClass, this, id);
-            model.fromJSON((String)o);
-            log.debug(String.format("Read state for '%1$s' in session attributes.", model));
-            return Optional.of(model);
-        }
-        else {
-            // if not a map than expect it to be the model
-            // this only happens if a model was added to the session before its json-serialization
-            final TModel model = (TModel)o;
-            log.debug(String.format("Read state for '%1$s' in session attributes.", model));
-            return Optional.of(model);
-        }
+
+        final Map<String, TModel> modelsToReturn = new HashMap<>();
+        // unresolve ids
+        models.forEach((id, model) -> {
+            modelsToReturn.put(model.getId(), model);
+        });
+        return modelsToReturn;
     }
 
     /**
